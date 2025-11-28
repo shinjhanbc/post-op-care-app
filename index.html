@@ -204,13 +204,14 @@
         // LLM Call for Q&A
         const generateText = async (prompt) => {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            // 調整 AI 系統提示，納入止血藥為務必吃完
             const systemPrompt = `你是一個專業、親切且負責任的醫美診所術後護理指導助理。你的任務是基於提供的術後藥物清單，回答使用者關於口服藥、藥物搭配或生活習慣的常見問題。請以繁體中文回答，語氣必須保持溫和、專業和安心感。請勿提供超出範圍的醫療建議，並在回答中強調「有嚴重不適請立刻聯繫診所或就醫」。
                                   
                                   **術後藥物清單：**
                                   1. 消炎藥 (抗生素): 預防傷口感染，務必吃完療程。
                                   2. 胃藥: 保護腸胃，減少藥物刺激。
                                   3. 止痛藥: 舒緩疼痛，不痛可不吃。
-                                  4. 止血消腫藥: 幫助止血與消腫，只需吃前兩天。
+                                  4. 止血消腫藥: 幫助止血與消腫，只需吃前兩天，務必吃完。
                                   **服藥原則:** 一天三次，三餐飯後服用，若未正常用餐，間隔 4 小時以上。`;
 
             const payload = {
@@ -273,7 +274,7 @@
 
         // --- 共用資料 ---
 
-        // 1. 口服藥品 (不分術種)
+        // 1. 口服藥品 (不分術種) - 更新：胃藥設為必吃 (important: true)
         const commonMedications = [
             {
                 id: 'anti-inflammatory',
@@ -291,7 +292,7 @@
                 type: 'tablet-pink',
                 schedule: '5天份',
                 frequency: '三餐飯後',
-                important: false
+                important: true // <--- 更改點 1: 胃藥標示 必吃
             },
             {
                 id: 'painkiller',
@@ -305,7 +306,7 @@
             {
                 id: 'hemostatic',
                 name: '止血消腫藥',
-                desc: '幫助止血與消腫，只需吃前兩天。',
+                desc: '幫助止血與消腫，只需吃前兩天，務必吃完。',
                 type: 'capsule-yellow-red',
                 schedule: '前2天',
                 frequency: '三餐飯後',
@@ -343,7 +344,7 @@
                 iceCare: {
                     instruction: '術後一週內需勤勞冰敷。',
                     method: '冰敷袋冷凍後使用，務必隔著乾淨紗布或毛巾，不可直接接觸皮膚。',
-                    position: '冰敷於眼周區域，坐著休息為佳。'
+                    position: '冰敷於患部區域，坐著休息為佳。' // <--- 更改點 2: 冰敷位置
                 }
             },
             neck: {
@@ -593,6 +594,7 @@
                 
                 if (url) {
                     setAudioUrl(url);
+                    audioRef.current.play().catch(e => console.error("Error playing generated audio:", e));
                     setIsSpeaking(true);
                 } else {
                     console.error("Failed to generate TTS audio.");
@@ -630,7 +632,8 @@
                             </>
                         )}
                     </button>
-                    {audioUrl && <audio ref={audioRef} src={audioUrl} className="hidden" />}
+                    {/* Audio 元素必須在 DOM 中才能播放 */}
+                    <audio ref={audioRef} src={audioUrl || undefined} className="hidden" /> 
                 </div>
             );
         };
@@ -718,7 +721,7 @@
                                         <ul className="list-disc pl-6 space-y-2 text-lg font-light text-nude-800 opacity-90">
                                             <li>一天三次，三餐飯後服用。</li>
                                             <li>若未正常用餐，間隔 4 小時以上。</li>
-                                            <li><strong className="font-medium text-nude-900">消炎藥、胃藥務必吃完。</strong></li>
+                                            <li><strong className="font-medium text-nude-900">止血藥、消炎藥、胃藥務必吃完。</strong></li> {/* <--- 更改點 3: 用藥原則 */}
                                         </ul>
                                     </div>
                                     <div className="grid gap-4">
