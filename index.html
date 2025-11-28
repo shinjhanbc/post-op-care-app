@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手術護理小幫手 - 心湛美學診所</title>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        nude: {
+                            50: '#F9F8F6',
+                            100: '#F2F0EB',
+                            200: '#E6E2DB',
+                            300: '#D4CFC5',
+                            800: '#5C5552',
+                            900: '#433E3C',
+                        },
+                        morandi: {
+                            blue: '#7A8F9F',       /* 莫蘭迪灰藍 */
+                            blueLight: '#E8EFF5',
+                            rose: '#C59D9D',       /* 乾燥玫瑰 */
+                            roseLight: '#F7EBEB',
+                            green: '#94A396',      /* 鼠尾草綠 (藥物標籤用) */
+                            gray: '#A8A29E',       /* 暖灰 */
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background-color: #F2F0EB; /* Nude-100 */
+            color: #433E3C; /* Nude-900 */
+            font-size: 18px; /* 基礎字體加大 */
+        }
+        
+        /* 自定義藥丸樣式 */
+        .pill-capsule-green-white {
+            background: linear-gradient(90deg, #5D8F76 50%, #F5F5F5 50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .pill-capsule-yellow-red {
+            background: linear-gradient(90deg, #E6C25B 50%, #D66A6A 50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .pill-tablet-yellow {
+            background-color: #F3E8A6;
+            box-shadow: inset 0 -2px 4px rgba(0,0,0,0.05);
+        }
+        .pill-tablet-pink {
+            background-color: #F0C4D3;
+            box-shadow: inset 0 -2px 4px rgba(0,0,0,0.05);
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* AI 互動區塊的動畫 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .ai-response {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // 全局 API Key 變量 (必須保留)
+        const apiKey = ""; 
+
+        // 輔助函式：Base64 轉 ArrayBuffer
+        const base64ToArrayBuffer = (base64) => {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        };
+
+        // 輔助函式：PCM 轉 WAV
+        // Gemini TTS API 返回 signed PCM 16 bit, 24000 Hz.
+        const pcmToWav = (pcmData, sampleRate) => {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const pcmLength = pcmData.byteLength;
+            const buffer = new ArrayBuffer(44 + pcmLength);
+            const view = new DataView(buffer);
+
+            let offset = 0;
+
+            // RIFF chunk
+            view.setUint32(offset, 0x52494646, true); offset += 4; // "RIFF"
+            view.setUint32(offset, 36 + pcmLength, true); offset += 4; // ChunkSize
+            view.setUint32(offset, 0x57415645, true); offset += 4; // "WAVE"
+
+            // fmt chunk
+            view.setUint32(offset, 0x666d7420, true); offset += 4; // "fmt "
+            view.setUint32(offset, 16, true); offset += 4; // Subchunk1Size (16 for PCM)
+            view.setUint16(offset, 1, true); offset += 2; // AudioFormat (1 for PCM)
+            view.setUint16(offset, numChannels, true); offset += 2; // NumChannels
+            view.setUint32(offset, sampleRate, true); offset += 4; // SampleRate
+            view.setUint32(offset, sampleRate * numChannels * bitsPerSample / 8, true); offset += 4; // ByteRate
+            view.setUint16(offset, numChannels * bitsPerSample / 8, true); offset += 2; // BlockAlign
+            view.setUint16(offset, bitsPerSample, true); offset += 2; // BitsPerSample
+
+            // data chunk
+            view.setUint32(offset, 0x64617461, true); offset += 4; // "data"
+            view.setUint32(offset, pcmLength, true); offset += 4; // Subchunk2Size
+
+            // Write PCM data
+            const pcmView = new Int16Array(pcmData);
+            for (let i = 0; i < pcmView.length; i++) {
+                view.setInt16(offset, pcmView[i], true);
+                offset += 2;
+            }
+
+            return new Blob([buffer], { type: 'audio/wav' });
+        };
+
+        // LLM Call for TTS (Text-to-Speech)
+        const generateSpeech = async (text, speaker = "Kore") => {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{
+                    parts: [{ text: text }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: speaker }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            const maxRetries = 3;
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`API response status: ${response.status}`);
+
+                    const result = await response.json();
+                    const part = result?.candidates?.[0]?.content?.parts?.[0];
+                    const audioData = part?.inlineData?.data;
+                    const mimeType = part?.inlineData?.mimeType;
+
+                    if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                        // The API returns audio/L16;rate=24000
+                        const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                        const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 24000;
+                        
+                        const pcmData = base64ToArrayBuffer(audioData);
+                        const pcm16 = new Int16Array(pcmData);
+                        const wavBlob = pcmToWav(pcm16, sampleRate);
+                        return URL.createObjectURL(wavBlob);
+                    }
+                    throw new Error("TTS response missing audio data.");
+
+                } catch (error) {
+                    console.error(`TTS API attempt ${attempt + 1} failed:`, error);
+                    if (attempt < maxRetries - 1) {
+                        const delay = Math.pow(2, attempt) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        return null; // Return null on final failure
+                    }
+                }
+            }
+        };
+
+        // LLM Call for Q&A
+        const generateText = async (prompt) => {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const systemPrompt = `你是一個專業、親切且負責任的醫美診所術後護理指導助理。你的任務是基於提供的術後藥物清單，回答使用者關於口服藥、藥物搭配或生活習慣的常見問題。請以繁體中文回答，語氣必須保持溫和、專業和安心感。請勿提供超出範圍的醫療建議，並在回答中強調「有嚴重不適請立刻聯繫診所或就醫」。
+                                  
+                                  **術後藥物清單：**
+                                  1. 消炎藥 (抗生素): 預防傷口感染，務必吃完療程。
+                                  2. 胃藥: 保護腸胃，減少藥物刺激。
+                                  3. 止痛藥: 舒緩疼痛，不痛可不吃。
+                                  4. 止血消腫藥: 幫助止血與消腫，只需吃前兩天。
+                                  **服藥原則:** 一天三次，三餐飯後服用，若未正常用餐，間隔 4 小時以上。`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                tools: [{ "google_search": {} }], // 啟用 Google Search 進行資訊搜索和接地氣
+            };
+
+            const maxRetries = 3;
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`API response status: ${response.status}`);
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        return candidate.content.parts[0].text;
+                    }
+                    throw new Error("LLM response missing text.");
+
+                } catch (error) {
+                    console.error(`LLM API attempt ${attempt + 1} failed:`, error);
+                    if (attempt < maxRetries - 1) {
+                        const delay = Math.pow(2, attempt) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        return "很抱歉，AI 暫時無法回應您的問題，請直接聯繫診所服務人員，謝謝！"; 
+                    }
+                }
+            }
+        };
+
+
+        // 圖標組件 - 稍微加大預設尺寸
+        const Icons = {
+            Clock: ({className}) => <i data-lucide="clock" className={className || "w-6 h-6"}></i>,
+            Calendar: ({className}) => <i data-lucide="calendar" className={className || "w-6 h-6"}></i>,
+            AlertCircle: ({className}) => <i data-lucide="alert-circle" className={className || "w-6 h-6"}></i>,
+            CheckCircle: ({className}) => <i data-lucide="check-circle" className={className || "w-6 h-6"}></i>,
+            Pill: ({className}) => <i data-lucide="pill" className={className || "w-6 h-6"}></i>,
+            Thermometer: ({className}) => <i data-lucide="thermometer" className={className || "w-6 h-6"}></i>,
+            Droplets: ({className}) => <i data-lucide="droplets" className={className || "w-6 h-6"}></i>,
+            Shield: ({className}) => <i data-lucide="shield" className={className || "w-6 h-6"}></i>,
+            ChevronDown: ({className}) => <i data-lucide="chevron-down" className={className || "w-6 h-6"}></i>,
+            ChevronUp: ({className}) => <i data-lucide="chevron-up" className={className || "w-6 h-6"}></i>,
+            Sparkles: ({className}) => <i data-lucide="sparkles" className={className || "w-6 h-6"}></i>,
+            Heart: ({className}) => <i data-lucide="heart-handshake" className={className || "w-6 h-6"}></i>,
+            Info: ({className}) => <i data-lucide="info" className={className || "w-6 h-6"}></i>,
+            Volume2: ({className}) => <i data-lucide="volume-2" className={className || "w-6 h-6"}></i>,
+            VolumeX: ({className}) => <i data-lucide="volume-x" className={className || "w-6 h-6"}></i>,
+            MessageCircle: ({className}) => <i data-lucide="message-circle" className={className || "w-6 h-6"}></i>,
+        };
+
+        // --- 共用資料 ---
+
+        // 1. 口服藥品 (不分術種)
+        const commonMedications = [
+            {
+                id: 'anti-inflammatory',
+                name: '消炎藥 (抗生素)',
+                desc: '預防傷口感染，務必吃完療程。',
+                type: 'capsule-green-white',
+                schedule: '5天份',
+                frequency: '三餐飯後',
+                important: true
+            },
+            {
+                id: 'stomach',
+                name: '胃藥',
+                desc: '保護腸胃，減少藥物刺激。',
+                type: 'tablet-pink',
+                schedule: '5天份',
+                frequency: '三餐飯後',
+                important: false
+            },
+            {
+                id: 'painkiller',
+                name: '止痛藥',
+                desc: '舒緩疼痛，不痛可不吃。',
+                type: 'tablet-yellow',
+                schedule: '5天份',
+                frequency: '三餐飯後',
+                important: false
+            },
+            {
+                id: 'hemostatic',
+                name: '止血消腫藥',
+                desc: '幫助止血與消腫，只需吃前兩天。',
+                type: 'capsule-yellow-red',
+                schedule: '前2天',
+                frequency: '三餐飯後',
+                important: true
+            }
+        ];
+
+        // 2. 術前須知 (整合版)
+        const commonPreOp = [
+            '手術前一週停用保健食品 (銀杏、人蔘、維骨力、魚油、薑黃、維他命E、活通血路藥物等)。',
+            '手術前一晚請徹底清潔、洗頭洗澡，當日不需帶換洗衣物。',
+            '手術當日請全素顏、勿擦保養品 (霜、乳、油類不可)。',
+            '請穿著寬鬆好穿脫衣物，勿穿高跟鞋。',
+            '請勿攜帶貴重物品。',
+            '建議不要戴隱形眼鏡 (若近視可戴一般眼鏡)。',
+            '請勿自行開車/騎車，建議搭乘大眾運輸或親友接送。'
+        ];
+
+        // --- 分頁專屬資料 (傷口護理) ---
+        const specificContent = {
+            eyebag: {
+                title: '眼袋手術',
+                colorTheme: 'blue',
+                woundCare: {
+                    steps: [
+                        '傷口已貼美容膠與膚色膠帶固定加壓。',
+                        '若對膠帶過敏(癢、不舒服)，請將膠帶與美容膠撕除。',
+                        '若膠帶撕除導致傷口暴露，需進行清潔換藥。',
+                        '清潔方式：棉棒沾生理食鹽水，輕輕滾過傷口 (單一方向，不可來回)。',
+                        '清潔後用乾棉棒擦乾，塗抹薄薄一層藥膏。',
+                        '換藥頻率：早晚各一次 (髒掉或濕掉隨時加強)。'
+                    ],
+                    medsNote: '若眼睛乾澀、紅癢，可使用提供的眼藥水，一日 2-3 次，每次 1-2 滴。'
+                },
+                iceCare: {
+                    instruction: '術後一週內需勤勞冰敷。',
+                    method: '冰敷袋冷凍後使用，務必隔著乾淨紗布或毛巾，不可直接接觸皮膚。',
+                    position: '冰敷於眼周區域，坐著休息為佳。'
+                }
+            },
+            neck: {
+                title: '天鵝頸手術',
+                colorTheme: 'rose',
+                woundCare: {
+                    steps: [
+                        '傷口有加壓固定膠帶。',
+                        '若皮膚發癢過敏，請撕除膠帶與美容膠。',
+                        '傷口暴露時需換藥：棉棒沾食鹽水滾動清潔 (單一方向)。',
+                        '等待乾燥或擦乾後，塗抹藥膏。',
+                        '換藥頻率：早晚各一次。'
+                    ],
+                    medsNote: '無特別額外藥水，請按時服用口服藥。'
+                },
+                iceCare: {
+                    instruction: '術後一週皆需冰敷，消腫較快。',
+                    method: '冰敷袋需隔紗布/毛巾。',
+                    position: '找有靠背沙發，雙手拿冰敷袋冰敷「輪廓線」與「頸部」。'
+                }
+            }
+        };
+
+        // UI 組件：藥丸顯示
+        const PillVisual = ({ type }) => {
+            // 放大藥丸圖示
+            let className = "w-10 h-5 inline-block mr-4 flex-shrink-0 ";
+            if (type === 'capsule-green-white') className += "rounded-full pill-capsule-green-white";
+            if (type === 'capsule-yellow-red') className += "rounded-full pill-capsule-yellow-red";
+            if (type === 'tablet-yellow') className += "rounded-[40%] pill-tablet-yellow border border-yellow-200/50";
+            if (type === 'tablet-pink') className += "rounded-full pill-tablet-pink border border-pink-200/50 w-5 h-5 mx-2"; 
+
+            return <div className={className}></div>;
+        };
+
+        // UI 組件：冰敷計時器
+        const IceTimer = ({ activeTab }) => {
+            const [timeLeft, setTimeLeft] = useState(15 * 60); 
+            const [isActive, setIsActive] = useState(false);
+            const [mode, setMode] = useState('ice'); // 'ice' or 'rest'
+
+            const btnColor = activeTab === 'eyebag' ? 'bg-morandi-blue text-white' : 'bg-morandi-rose text-white';
+            const ringColor = activeTab === 'eyebag' ? 'text-morandi-blue' : 'text-morandi-rose';
+
+            useEffect(() => {
+                let interval = null;
+                if (isActive && timeLeft > 0) {
+                    interval = setInterval(() => {
+                        setTimeLeft(timeLeft - 1);
+                    }, 1000);
+                } else if (timeLeft === 0) {
+                    setIsActive(false);
+                    // 使用 custom modal 替代 alert
+                    const message = mode === 'ice' 
+                        ? "冰敷結束！請休息 1-2 小時。"
+                        : "休息結束，可以準備下一次冰敷囉！";
+                    
+                    // Simple in-app notification logic (replace with a proper modal if needed)
+                    console.log(message); // Logging as a fallback/simple message
+
+                    if(mode === 'ice') {
+                        setMode('rest');
+                        setTimeLeft(60 * 60); 
+                    } else {
+                        setMode('ice');
+                        setTimeLeft(15 * 60);
+                    }
+                }
+                return () => clearInterval(interval);
+            }, [isActive, timeLeft, mode]);
+
+            const toggleTimer = () => setIsActive(!isActive);
+            const resetTimer = () => {
+                setIsActive(false);
+                setMode('ice');
+                setTimeLeft(15 * 60);
+            };
+
+            const formatTime = (seconds) => {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            };
+
+            return (
+                <div className="bg-nude-50 rounded-3xl p-6 shadow-sm border border-nude-200 mt-6 text-center">
+                    <h3 className="text-xl font-bold text-nude-800 flex items-center justify-center gap-2 mb-2 tracking-wide">
+                        <Icons.Clock className="text-nude-800 opacity-70 w-6 h-6"/> 
+                        {mode === 'ice' ? '冰敷計時' : '休息時間'}
+                    </h3>
+                    <div className={`text-7xl font-light font-mono my-6 ${ringColor}`}>
+                        {formatTime(timeLeft)}
+                    </div>
+                    <div className="flex justify-center gap-4">
+                        <button 
+                            onClick={toggleTimer}
+                            className={`px-8 py-3 rounded-full text-xl font-medium transition-all shadow-md active:scale-95 ${isActive ? 'bg-nude-300 text-nude-800' : btnColor}`}
+                        >
+                            {isActive ? '暫停' : '開始'}
+                        </button>
+                        <button 
+                            onClick={resetTimer}
+                            className="px-6 py-3 rounded-full text-xl font-medium text-nude-800 bg-white border border-nude-200 hover:bg-nude-50 transition-all"
+                        >
+                            重置
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+        
+        // UI 組件：AI 藥物問答介面
+        const MedicationQnA = () => {
+            const [query, setQuery] = useState('');
+            const [response, setResponse] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [isChatOpen, setIsChatOpen] = useState(false);
+
+            const handleAskAI = async () => {
+                if (!query.trim()) return;
+                setIsLoading(true);
+                setResponse('');
+
+                const result = await generateText(query);
+                
+                setIsLoading(false);
+                setResponse(result);
+            };
+
+            const handleKeyDown = (e) => {
+                if (e.key === 'Enter' && !isLoading) {
+                    handleAskAI();
+                }
+            };
+
+            return (
+                <div className="p-4 bg-nude-50 rounded-2xl border border-nude-200/50 mt-4">
+                    <button 
+                        onClick={() => setIsChatOpen(!isChatOpen)}
+                        className="w-full flex items-center justify-center gap-3 text-xl font-medium py-3 rounded-xl bg-nude-200 text-nude-800 hover:bg-nude-300 transition-colors shadow-md active:scale-[0.98]"
+                    >
+                         <Icons.MessageCircle className="w-5 h-5"/> ✨ AI 藥物安心問答
+                    </button>
+
+                    {isChatOpen && (
+                        <div className="mt-4 pt-4 border-t border-nude-200/50 ai-response">
+                            <div className="flex gap-2 mb-3">
+                                <input
+                                    type="text"
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="輸入您的疑問，例如：我可以喝咖啡嗎？"
+                                    className="flex-1 p-3 border border-nude-300 rounded-xl text-lg focus:ring-morandi-blue focus:border-morandi-blue outline-none transition-shadow"
+                                    disabled={isLoading}
+                                />
+                                <button
+                                    onClick={handleAskAI}
+                                    className={`p-3 rounded-xl text-white shadow-md transition-all active:scale-[0.95] min-w-[100px] ${isLoading ? 'bg-nude-400' : 'bg-morandi-blue hover:bg-morandi-blue/90'}`}
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? '詢問中...' : '詢問'}
+                                </button>
+                            </div>
+                            
+                            {response && (
+                                <div className="mt-4 p-4 bg-white rounded-xl shadow-inner text-base border border-morandi-blueLight/50">
+                                    <div className="flex items-center gap-2 font-bold mb-2 text-morandi-blue">
+                                        <Icons.Sparkles className="w-4 h-4"/> AI 藥護建議
+                                    </div>
+                                    <p className="whitespace-pre-wrap leading-relaxed text-nude-800 font-light">{response}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+
+        // UI 組件：手風琴區塊
+        const CommonAccordionItem = ({ title, icon, children, isOpen, onClick }) => {
+            return (
+                <div className="border-b border-nude-200 last:border-0">
+                    <button 
+                        className="w-full py-6 px-6 flex items-center justify-between bg-white hover:bg-nude-50 transition-all duration-300 text-left"
+                        onClick={onClick}
+                    >
+                        <div className="flex items-center gap-5">
+                            <span className={`p-3 rounded-xl transition-colors duration-300 ${isOpen ? 'bg-nude-200 text-nude-900' : 'bg-nude-100 text-nude-800'}`}>
+                                {icon}
+                            </span>
+                            <span className={`text-xl font-medium tracking-wide transition-colors ${isOpen ? 'text-nude-900' : 'text-nude-800'}`}>
+                                {title}
+                            </span>
+                        </div>
+                        <span className={`transform transition-transform duration-300 ${isOpen ? 'rotate-180 text-nude-800' : 'text-nude-300'}`}>
+                            <Icons.ChevronDown className="w-6 h-6"/>
+                        </span>
+                    </button>
+                    <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                        <div className="p-6 pt-2 text-nude-800 leading-relaxed bg-white">
+                            {children}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // UI 組件：TTS 播放器
+        const TTSPlayer = ({ text, activeTab }) => {
+            const [audioUrl, setAudioUrl] = useState(null);
+            const [isSpeaking, setIsSpeaking] = useState(false);
+            const [isLoading, setIsLoading] = useState(false);
+            const audioRef = useRef(null);
+
+            const btnColor = activeTab === 'eyebag' ? 'bg-morandi-blue' : 'bg-morandi-rose';
+
+            useEffect(() => {
+                if (audioRef.current) {
+                    audioRef.current.onended = () => setIsSpeaking(false);
+                    audioRef.current.onerror = () => setIsSpeaking(false);
+                }
+            }, [audioUrl]);
+
+            const handlePlay = async () => {
+                if (isSpeaking) {
+                    // Stop playing
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                    setIsSpeaking(false);
+                    return;
+                }
+
+                if (audioUrl) {
+                    // Play existing audio
+                    audioRef.current.play().catch(e => console.error("Error playing existing audio:", e));
+                    setIsSpeaking(true);
+                    return;
+                }
+
+                // Generate new audio
+                setIsLoading(true);
+                const voice = activeTab === 'eyebag' ? 'Leda' : 'Kore'; // 選擇不同音色
+                const url = await generateSpeech(`請以專業、溫和的語氣朗讀以下術後護理步驟：${text}`, voice);
+                setIsLoading(false);
+                
+                if (url) {
+                    setAudioUrl(url);
+                    setIsSpeaking(true);
+                } else {
+                    console.error("Failed to generate TTS audio.");
+                }
+            };
+
+            useEffect(() => {
+                // Cleanup old URL when component unmounts or text changes
+                return () => {
+                    if (audioUrl) URL.revokeObjectURL(audioUrl);
+                };
+            }, [text]);
+
+
+            return (
+                <div className={`mt-6 ${activeTab === 'eyebag' ? 'bg-morandi-blueLight' : 'bg-morandi-roseLight'} p-4 rounded-xl border border-nude-200`}>
+                    <button
+                        onClick={handlePlay}
+                        className={`w-full flex items-center justify-center gap-3 text-xl font-medium py-3 rounded-xl transition-colors shadow-md active:scale-[0.98] ${
+                            isLoading ? 'bg-nude-400 text-nude-900' : `${btnColor} text-white hover:opacity-90`
+                        }`}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <>
+                                <Icons.Volume2 className="w-5 h-5 animate-pulse"/> 語音生成中...
+                            </>
+                        ) : isSpeaking ? (
+                            <>
+                                <Icons.VolumeX className="w-5 h-5"/> 點擊停止播放
+                            </>
+                        ) : (
+                            <>
+                                <Icons.Volume2 className="w-5 h-5"/> ✨ 聽取照護重點
+                            </>
+                        )}
+                    </button>
+                    {audioUrl && <audio ref={audioRef} src={audioUrl} className="hidden" />}
+                </div>
+            );
+        };
+
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('eyebag');
+            const [openSections, setOpenSections] = useState({
+                preop: false,
+                meds: true,
+            });
+
+            const currentData = specificContent[activeTab];
+            const woundCareText = currentData.woundCare.steps.join('。'); // 拼接所有步驟為一段文字
+            
+            // Theme Classes
+            const themeClasses = activeTab === 'eyebag' 
+                ? { 
+                    bg: 'bg-morandi-blue', 
+                    text: 'text-morandi-blue', 
+                    lightBg: 'bg-morandi-blueLight',
+                    pill: 'bg-morandi-blue text-white'
+                  }
+                : { 
+                    bg: 'bg-morandi-rose', 
+                    text: 'text-morandi-rose', 
+                    lightBg: 'bg-morandi-roseLight',
+                    pill: 'bg-morandi-rose text-white'
+                  };
+
+            const toggleSection = (section) => {
+                setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+            };
+
+            useEffect(() => {
+                lucide.createIcons();
+            }, [activeTab, openSections]);
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen bg-nude-100 pb-20 relative shadow-2xl overflow-hidden font-sans">
+                    
+                    {/* Header - 字體放大 */}
+                    <div className="relative px-6 pt-12 pb-10 bg-nude-800">
+                        <h2 className="text-white/80 text-lg tracking-[0.15em] mb-2 font-light">心湛美學診所</h2>
+                        <h1 className="text-4xl text-white font-medium tracking-wide flex items-center gap-3">
+                            <Icons.Sparkles className="w-8 h-8"/> 術後護理小幫手
+                        </h1>
+                    </div>
+
+                    {/* --- 共用區塊 (術前 + 藥物) --- */}
+                    <div className="px-5 -mt-6 space-y-5 relative z-10">
+                        
+                        {/* 1. 術前須知 */}
+                        <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
+                            <CommonAccordionItem 
+                                title="術前小提醒" 
+                                icon={<Icons.Calendar />}
+                                isOpen={openSections.preop}
+                                onClick={() => toggleSection('preop')}
+                            >
+                                <ul className="space-y-4 mt-2">
+                                    {commonPreOp.map((item, idx) => (
+                                        <li key={idx} className="flex items-start gap-4 text-lg text-nude-800 font-light">
+                                            <span className="mt-2 min-w-[8px] h-[8px] rounded-full bg-nude-400"></span>
+                                            <span className="leading-relaxed">{item}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </CommonAccordionItem>
+                        </div>
+
+                        {/* 2. 口服藥品 */}
+                        <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
+                            <CommonAccordionItem 
+                                title="口服藥與藥品" 
+                                icon={<Icons.Pill />}
+                                isOpen={openSections.meds}
+                                onClick={() => toggleSection('meds')}
+                            >
+                                <div className="space-y-5">
+                                    <div className="bg-nude-50 p-5 rounded-2xl border border-nude-200/50 text-nude-800">
+                                        <div className="font-medium flex items-center gap-2 mb-3 text-morandi-green">
+                                            <Icons.AlertCircle className="w-6 h-6" /> <span className="text-nude-900 text-xl">用藥原則</span>
+                                        </div>
+                                        <ul className="list-disc pl-6 space-y-2 text-lg font-light text-nude-800 opacity-90">
+                                            <li>一天三次，三餐飯後服用。</li>
+                                            <li>若未正常用餐，間隔 4 小時以上。</li>
+                                            <li><strong className="font-medium text-nude-900">消炎藥、胃藥務必吃完。</strong></li>
+                                        </ul>
+                                    </div>
+                                    <div className="grid gap-4">
+                                        {commonMedications.map(med => (
+                                            <div key={med.id} className="flex items-center bg-white p-4 rounded-2xl border border-nude-200 shadow-sm">
+                                                <PillVisual type={med.type} />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-baseline mb-2">
+                                                        <h4 className="font-bold text-nude-900 text-xl">{med.name}</h4>
+                                                        {med.important && <span className="text-sm bg-morandi-rose text-white px-3 py-1 rounded-full tracking-wider font-medium">必吃</span>}
+                                                    </div>
+                                                    <p className="text-base text-nude-800 opacity-80">{med.desc}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <MedicationQnA /> {/* 藥物問答介面 */}
+                                </div>
+                            </CommonAccordionItem>
+                        </div>
+                    </div>
+
+                    {/* --- 分頁切換區 (針對手術種類) --- */}
+                    <div className="mt-10 px-5">
+                        <div className="flex items-center gap-3 mb-6">
+                             <div className="h-px bg-nude-300 flex-1"></div>
+                             <span className="text-base text-nude-400 font-medium tracking-widest uppercase">選擇您的手術</span>
+                             <div className="h-px bg-nude-300 flex-1"></div>
+                        </div>
+
+                        <div className="flex bg-white p-2 rounded-3xl shadow-lg mb-8">
+                            <button 
+                                onClick={() => setActiveTab('eyebag')}
+                                className={`flex-1 py-4 rounded-2xl text-xl font-medium transition-all duration-300 ${activeTab === 'eyebag' ? 'bg-morandi-blue text-white shadow-xl' : 'text-nude-400 hover:bg-nude-50'}`}
+                            >
+                                眼袋手術
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('neck')}
+                                className={`flex-1 py-4 rounded-2xl text-xl font-medium transition-all duration-300 ${activeTab === 'neck' ? 'bg-morandi-rose text-white shadow-xl' : 'text-nude-400 hover:bg-nude-50'}`}
+                            >
+                                天鵝頸手術
+                            </button>
+                        </div>
+
+                        {/* --- 手術專屬內容 (傷口與照護) --- */}
+                        <div className={`transition-opacity duration-300 ease-in-out`}>
+                            <h3 className={`text-3xl font-medium mb-6 flex items-center gap-3 ${themeClasses.text}`}>
+                                <Icons.Sparkles className="w-8 h-8"/> {currentData.title}術後照護
+                            </h3>
+
+                            <div className="space-y-8">
+                                {/* 傷口清潔 */}
+                                <div className="bg-white rounded-3xl p-6 shadow-lg border border-nude-100">
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className={`p-4 rounded-xl ${themeClasses.lightBg} ${themeClasses.text}`}>
+                                            <Icons.Shield className="w-7 h-7"/>
+                                        </div>
+                                        <h4 className="text-2xl font-bold text-nude-900">傷口清潔與換藥</h4>
+                                    </div>
+                                    
+                                    <TTSPlayer text={woundCareText} activeTab={activeTab} /> {/* TTS 播放器 */}
+
+                                    <div className="relative pl-8 border-l-2 border-nude-200 space-y-6 my-6">
+                                        {currentData.woundCare.steps.map((step, i) => (
+                                            <div key={i} className="relative">
+                                                <div className={`absolute -left-[1.65rem] top-2 w-4 h-4 rounded-full border-2 border-white ring-2 ring-nude-200 ${themeClasses.bg}`}></div>
+                                                <p className="text-xl text-nude-800 font-light leading-9">{step}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* 換藥包提示 */}
+                                    <div className="mt-8 bg-nude-50 p-5 rounded-2xl text-lg text-nude-800 font-light flex gap-3 items-center">
+                                        <Icons.Heart className="w-6 h-6 text-nude-400 flex-shrink-0"/>
+                                        <span>換藥包：棉花棒、生理食鹽水、藥膏 (Tetra)</span>
+                                    </div>
+                                    
+                                    {/* 特殊藥水 (眼袋專用) */}
+                                    {activeTab === 'eyebag' && (
+                                        <div className={`mt-4 ${themeClasses.lightBg} p-5 rounded-2xl text-lg text-nude-800 flex gap-3 items-center`}>
+                                            <Icons.Droplets className={`w-6 h-6 ${themeClasses.text} flex-shrink-0`}/>
+                                            <span>{currentData.woundCare.medsNote}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 冰敷護理 */}
+                                <div className="bg-white rounded-3xl p-6 shadow-lg border border-nude-100">
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className={`p-4 rounded-xl ${themeClasses.lightBg} ${themeClasses.text}`}>
+                                            <Icons.Thermometer className="w-7 h-7"/>
+                                        </div>
+                                        <h4 className="text-2xl font-bold text-nude-900">術後冰敷</h4>
+                                    </div>
+
+                                    <div className="text-xl text-nude-800 font-light space-y-4 mb-6">
+                                        <p className="font-bold opacity-95 text-2xl mb-4">{currentData.iceCare.instruction}</p>
+                                        <div className="flex flex-col gap-2 bg-nude-50 p-5 rounded-xl">
+                                            <span className="flex-shrink-0 text-base font-medium uppercase text-nude-400">方法</span>
+                                            <p className="leading-relaxed">{currentData.iceCare.method}</p>
+                                        </div>
+                                        <div className="flex flex-col gap-2 bg-nude-50 p-5 rounded-xl">
+                                            <span className="flex-shrink-0 text-base font-medium uppercase text-nude-400">姿勢</span>
+                                            <p className="leading-relaxed">{currentData.iceCare.position}</p>
+                                        </div>
+                                    </div>
+
+                                    <IceTimer activeTab={activeTab}/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <footer className="text-center text-nude-300 text-sm tracking-widest uppercase py-12 opacity-60">
+                        Design for Healing & Comfort
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
