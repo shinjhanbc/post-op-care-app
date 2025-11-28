@@ -27,11 +27,22 @@
                             900: '#433E3C',
                         },
                         morandi: {
-                            blue: '#7A8F9F',       /* 莫蘭迪灰藍 */
+                            // 既有顏色 (藍/玫瑰)
+                            blue: '#7A8F9F',       /* 莫蘭迪灰藍 (眼袋) */
                             blueLight: '#E8EFF5',
-                            rose: '#C59D9D',       /* 乾燥玫瑰 */
+                            rose: '#C59D9D',       /* 乾燥玫瑰 (天鵝頸) */
                             roseLight: '#F7EBEB',
-                            green: '#94A396',      /* 鼠尾草綠 (藥物標籤用) */
+                            
+                            // 新增顏色
+                            green: '#94A396',      /* 鼠尾草綠 (雙眼皮) */
+                            greenLight: '#F0F5F1',
+                            purple: '#A394A3',     /* 柔和紫 (隆鼻) */
+                            purpleLight: '#F5F1F5',
+                            yellow: '#D9C7A6',     /* 淺米黃 (隆乳) */
+                            yellowLight: '#FFFBEF',
+                            orange: '#D48F7A',     /* 赤陶橘 (抽脂) */
+                            orangeLight: '#F7EFE9',
+
                             gray: '#A8A29E',       /* 暖灰 */
                         }
                     },
@@ -70,6 +81,7 @@
             box-shadow: inset 0 -2px 4px rgba(0,0,0,0.05);
         }
 
+        /* 隱藏滾動條 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -104,7 +116,6 @@
         };
 
         // 輔助函式：PCM 轉 WAV
-        // Gemini TTS API 返回 signed PCM 16 bit, 24000 Hz.
         const pcmToWav = (pcmData, sampleRate) => {
             const numChannels = 1;
             const bitsPerSample = 16;
@@ -178,7 +189,6 @@
                     const mimeType = part?.inlineData?.mimeType;
 
                     if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                        // The API returns audio/L16;rate=24000
                         const sampleRateMatch = mimeType.match(/rate=(\d+)/);
                         const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 24000;
                         
@@ -204,12 +214,12 @@
         // LLM Call for Q&A
         const generateText = async (prompt) => {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            // 調整 AI 系統提示，納入止血藥為務必吃完
+            // 系統提示納入所有術後護理的通用原則
             const systemPrompt = `你是一個專業、親切且負責任的醫美診所術後護理指導助理。你的任務是基於提供的術後藥物清單，回答使用者關於口服藥、藥物搭配或生活習慣的常見問題。請以繁體中文回答，語氣必須保持溫和、專業和安心感。請勿提供超出範圍的醫療建議，並在回答中強調「有嚴重不適請立刻聯繫診所或就醫」。
                                   
                                   **術後藥物清單：**
                                   1. 消炎藥 (抗生素): 預防傷口感染，務必吃完療程。
-                                  2. 胃藥: 保護腸胃，減少藥物刺激。
+                                  2. 胃藥: 保護腸胃，減少藥物刺激，務必吃完。
                                   3. 止痛藥: 舒緩疼痛，不痛可不吃。
                                   4. 止血消腫藥: 幫助止血與消腫，只需吃前兩天，務必吃完。
                                   **服藥原則:** 一天三次，三餐飯後服用，若未正常用餐，間隔 4 小時以上。`;
@@ -257,7 +267,6 @@
             Clock: ({className}) => <i data-lucide="clock" className={className || "w-6 h-6"}></i>,
             Calendar: ({className}) => <i data-lucide="calendar" className={className || "w-6 h-6"}></i>,
             AlertCircle: ({className}) => <i data-lucide="alert-circle" className={className || "w-6 h-6"}></i>,
-            CheckCircle: ({className}) => <i data-lucide="check-circle" className={className || "w-6 h-6"}></i>,
             Pill: ({className}) => <i data-lucide="pill" className={className || "w-6 h-6"}></i>,
             Thermometer: ({className}) => <i data-lucide="thermometer" className={className || "w-6 h-6"}></i>,
             Droplets: ({className}) => <i data-lucide="droplets" className={className || "w-6 h-6"}></i>,
@@ -266,57 +275,28 @@
             ChevronUp: ({className}) => <i data-lucide="chevron-up" className={className || "w-6 h-6"}></i>,
             Sparkles: ({className}) => <i data-lucide="sparkles" className={className || "w-6 h-6"}></i>,
             Heart: ({className}) => <i data-lucide="heart-handshake" className={className || "w-6 h-6"}></i>,
-            Info: ({className}) => <i data-lucide="info" className={className || "w-6 h-6"}></i>,
             Volume2: ({className}) => <i data-lucide="volume-2" className={className || "w-6 h-6"}></i>,
             VolumeX: ({className}) => <i data-lucide="volume-x" className={className || "w-6 h-6"}></i>,
             MessageCircle: ({className}) => <i data-lucide="message-circle" className={className || "w-6 h-6"}></i>,
+            Zap: ({className}) => <i data-lucide="zap" className={className || "w-6 h-6"}></i>, // 用於抽脂
+            Smile: ({className}) => <i data-lucide="smile" className={className || "w-6 h-6"}></i>, // 用於雙眼皮
+            Feather: ({className}) => <i data-lucide="feather" className={className || "w-6 h-6"}></i>, // 用於隆鼻
+            HandHeart: ({className}) => <i data-lucide="hand-heart" className={className || "w-6 h-6"}></i>, // 用於隆乳
         };
 
         // --- 共用資料 ---
 
-        // 1. 口服藥品 (不分術種) - 更新：胃藥設為必吃 (important: true)
+        // 1. 口服藥品 (不分術種)
         const commonMedications = [
-            {
-                id: 'anti-inflammatory',
-                name: '消炎藥 (抗生素)',
-                desc: '預防傷口感染，務必吃完療程。',
-                type: 'capsule-green-white',
-                schedule: '5天份',
-                frequency: '三餐飯後',
-                important: true
-            },
-            {
-                id: 'stomach',
-                name: '胃藥',
-                desc: '保護腸胃，減少藥物刺激。',
-                type: 'tablet-pink',
-                schedule: '5天份',
-                frequency: '三餐飯後',
-                important: true // <--- 更改點 1: 胃藥標示 必吃
-            },
-            {
-                id: 'painkiller',
-                name: '止痛藥',
-                desc: '舒緩疼痛，不痛可不吃。',
-                type: 'tablet-yellow',
-                schedule: '5天份',
-                frequency: '三餐飯後',
-                important: false
-            },
-            {
-                id: 'hemostatic',
-                name: '止血消腫藥',
-                desc: '幫助止血與消腫，只需吃前兩天，務必吃完。',
-                type: 'capsule-yellow-red',
-                schedule: '前2天',
-                frequency: '三餐飯後',
-                important: true
-            }
+            { id: 'anti-inflammatory', name: '消炎藥 (抗生素)', desc: '預防傷口感染，務必吃完療程。', type: 'capsule-green-white', schedule: '5天份', frequency: '三餐飯後', important: true },
+            { id: 'stomach', name: '胃藥', desc: '保護腸胃，減少藥物刺激。', type: 'tablet-pink', schedule: '5天份', frequency: '三餐飯後', important: true },
+            { id: 'painkiller', name: '止痛藥', desc: '舒緩疼痛，不痛可不吃。', type: 'tablet-yellow', schedule: '5天份', frequency: '三餐飯後', important: false },
+            { id: 'hemostatic', name: '止血消腫藥', desc: '幫助止血與消腫，只需吃前兩天，務必吃完。', type: 'capsule-yellow-red', schedule: '前2天', frequency: '三餐飯後', important: true }
         ];
 
         // 2. 術前須知 (整合版)
         const commonPreOp = [
-            '手術前一週停用保健食品 (銀杏、人蔘、維骨力、魚油、薑黃、維他命E、活通血路藥物等)。',
+            '手術前一週停用保健食品 (銀杏、人蔘、魚油、維他命E、活通血路藥物等)。',
             '手術前一晚請徹底清潔、洗頭洗澡，當日不需帶換洗衣物。',
             '手術當日請全素顏、勿擦保養品 (霜、乳、油類不可)。',
             '請穿著寬鬆好穿脫衣物，勿穿高跟鞋。',
@@ -325,10 +305,11 @@
             '請勿自行開車/騎車，建議搭乘大眾運輸或親友接送。'
         ];
 
-        // --- 分頁專屬資料 (傷口護理) ---
+        // --- 分頁專屬資料 (傷口護理) - 增加四個術式 ---
         const specificContent = {
             eyebag: {
                 title: '眼袋手術',
+                icon: Icons.Droplets,
                 colorTheme: 'blue',
                 woundCare: {
                     steps: [
@@ -344,11 +325,52 @@
                 iceCare: {
                     instruction: '術後一週內需勤勞冰敷。',
                     method: '冰敷袋冷凍後使用，務必隔著乾淨紗布或毛巾，不可直接接觸皮膚。',
-                    position: '冰敷於患部區域，坐著休息為佳。' // <--- 更改點 2: 冰敷位置
+                    position: '冰敷於患部區域，坐著休息為佳。'
+                }
+            },
+            doubleEyelid: {
+                title: '雙眼皮手術',
+                icon: Icons.Smile,
+                colorTheme: 'green',
+                woundCare: {
+                    steps: [
+                        '傷口若有血塊或分泌物，用生理食鹽水濕敷軟化後再輕輕擦拭。',
+                        '清潔方式：棉棒沾生理食鹽水，輕輕滾過傷口 (單一方向，不可來回)。',
+                        '清潔後用乾棉棒擦乾，塗抹薄薄一層藥膏。',
+                        '換藥頻率：早晚各一次 (髒掉或濕掉隨時加強)。',
+                        '注意事項：術後勿揉眼睛，避免傷口裂開或影響癒合。'
+                    ],
+                    medsNote: '若眼睛乾澀、紅癢，可使用提供的眼藥水，一日 2-3 次，每次 1-2 滴。'
+                },
+                iceCare: {
+                    instruction: '術後前三天需勤勞冰敷，有助於消腫。',
+                    method: '冰敷袋需隔紗布/毛巾，不可直接接觸皮膚。',
+                    position: '冰敷於眼皮與眼周區域，坐著休息為佳。'
+                }
+            },
+            rhinoplasty: {
+                title: '隆鼻手術',
+                icon: Icons.Feather,
+                colorTheme: 'purple',
+                woundCare: {
+                    steps: [
+                        '傷口通常在鼻孔內側或鼻小柱。',
+                        '清潔方式：棉棒沾生理食鹽水，清潔鼻孔內側傷口。',
+                        '清潔後用乾棉棒擦乾，塗抹藥膏。',
+                        '換藥頻率：早晚各一次。',
+                        '注意事項：鼻孔外側的膠帶或縫線勿自行移除或碰水。'
+                    ],
+                    medsNote: '無特別額外藥水，請按時服用口服藥。'
+                },
+                iceCare: {
+                    instruction: '術後一週內需冰敷。',
+                    method: '使用小冰敷袋或冰眼罩，避開鼻樑植入處，冰敷於鼻翼與眼周。',
+                    position: '抬高頭部，半坐臥休息。'
                 }
             },
             neck: {
                 title: '天鵝頸手術',
+                icon: Icons.Zap,
                 colorTheme: 'rose',
                 woundCare: {
                     steps: [
@@ -365,8 +387,49 @@
                     method: '冰敷袋需隔紗布/毛巾。',
                     position: '找有靠背沙發，雙手拿冰敷袋冰敷「輪廓線」與「頸部」。'
                 }
+            },
+            breastAugmentation: {
+                title: '隆乳手術',
+                icon: Icons.HandHeart,
+                colorTheme: 'yellow',
+                woundCare: {
+                    steps: [
+                        '傷口通常在腋下、乳暈或下緣，已貼防水敷料或美容膠。',
+                        '術後 7 天內傷口不可碰水，保持乾燥。',
+                        '若敷料脫落或破損，需聯繫診所更換。',
+                        '換藥頻率：由診所指定，通常是回診時更換，不需自行處理。'
+                    ],
+                    medsNote: '術後三個月需依醫囑按摩胸部，請遵照醫護人員指示。'
+                },
+                iceCare: {
+                    instruction: '術後前三天需冰敷。',
+                    method: '避開乳房本體，冰敷於胸部外側或腋下傷口周圍。',
+                    position: '穿著束胸帶或彈性內衣，背部墊2-3顆枕頭半坐臥方式休息。'
+                }
+            },
+            liposuction: {
+                title: '抽脂手術',
+                icon: Icons.Zap,
+                colorTheme: 'orange',
+                woundCare: {
+                    steps: [
+                        '傷口小且隱藏，已貼上人工皮或防水敷料。',
+                        '傷口處會有滲液流出，為正常現象，敷料濕透需更換。',
+                        '清潔方式：撕除敷料後，用食鹽水清潔傷口，塗抹藥膏後再貼上新的敷料。',
+                        '換藥頻率：依滲液多寡隨時更換，至少一天一次。'
+                    ],
+                    medsNote: '請務必 24 小時穿著塑身衣，僅洗澡時可脫下。'
+                },
+                iceCare: {
+                    instruction: '冰敷有助於舒緩腫脹和疼痛，前 3 天可多做。',
+                    method: '冰敷袋需隔著束衣或毛巾，不可直接接觸皮膚。',
+                    position: '冰敷於抽脂部位，多休息，避免壓迫患部。'
+                }
             }
         };
+
+        const surgeryKeys = Object.keys(specificContent);
+
 
         // UI 組件：藥丸顯示
         const PillVisual = ({ type }) => {
@@ -386,8 +449,10 @@
             const [isActive, setIsActive] = useState(false);
             const [mode, setMode] = useState('ice'); // 'ice' or 'rest'
 
-            const btnColor = activeTab === 'eyebag' ? 'bg-morandi-blue text-white' : 'bg-morandi-rose text-white';
-            const ringColor = activeTab === 'eyebag' ? 'text-morandi-blue' : 'text-morandi-rose';
+            // 動態獲取顏色
+            const colorName = specificContent[activeTab].colorTheme;
+            const btnColor = `bg-morandi-${colorName} text-white`;
+            const ringColor = `text-morandi-${colorName}`;
 
             useEffect(() => {
                 let interval = null;
@@ -397,13 +462,12 @@
                     }, 1000);
                 } else if (timeLeft === 0) {
                     setIsActive(false);
-                    // 使用 custom modal 替代 alert
+                    
                     const message = mode === 'ice' 
                         ? "冰敷結束！請休息 1-2 小時。"
                         : "休息結束，可以準備下一次冰敷囉！";
                     
-                    // Simple in-app notification logic (replace with a proper modal if needed)
-                    console.log(message); // Logging as a fallback/simple message
+                    console.log(message); // Logging as a simple message
 
                     if(mode === 'ice') {
                         setMode('rest');
@@ -561,7 +625,9 @@
             const [isLoading, setIsLoading] = useState(false);
             const audioRef = useRef(null);
 
-            const btnColor = activeTab === 'eyebag' ? 'bg-morandi-blue' : 'bg-morandi-rose';
+            // 獲取當前主題的顏色名稱
+            const colorName = specificContent[activeTab].colorTheme;
+            const btnColor = `bg-morandi-${colorName}`;
 
             useEffect(() => {
                 if (audioRef.current) {
@@ -588,7 +654,12 @@
 
                 // Generate new audio
                 setIsLoading(true);
-                const voice = activeTab === 'eyebag' ? 'Leda' : 'Kore'; // 選擇不同音色
+                // 根據術式主題選擇不同音色
+                const voiceMap = {
+                    blue: 'Leda', rose: 'Kore', green: 'Aoede', purple: 'Charon', yellow: 'Puck', orange: 'Fenrir'
+                };
+                const voice = voiceMap[colorName] || 'Kore';
+                
                 const url = await generateSpeech(`請以專業、溫和的語氣朗讀以下術後護理步驟：${text}`, voice);
                 setIsLoading(false);
                 
@@ -610,7 +681,7 @@
 
 
             return (
-                <div className={`mt-6 ${activeTab === 'eyebag' ? 'bg-morandi-blueLight' : 'bg-morandi-roseLight'} p-4 rounded-xl border border-nude-200`}>
+                <div className={`mt-6 bg-morandi-${colorName}Light p-4 rounded-xl border border-nude-200`}>
                     <button
                         onClick={handlePlay}
                         className={`w-full flex items-center justify-center gap-3 text-xl font-medium py-3 rounded-xl transition-colors shadow-md active:scale-[0.98] ${
@@ -640,7 +711,7 @@
 
 
         const App = () => {
-            const [activeTab, setActiveTab] = useState('eyebag');
+            const [activeTab, setActiveTab] = useState('eyebag'); // 預設眼袋
             const [openSections, setOpenSections] = useState({
                 preop: false,
                 meds: true,
@@ -649,20 +720,15 @@
             const currentData = specificContent[activeTab];
             const woundCareText = currentData.woundCare.steps.join('。'); // 拼接所有步驟為一段文字
             
-            // Theme Classes
-            const themeClasses = activeTab === 'eyebag' 
-                ? { 
-                    bg: 'bg-morandi-blue', 
-                    text: 'text-morandi-blue', 
-                    lightBg: 'bg-morandi-blueLight',
-                    pill: 'bg-morandi-blue text-white'
-                  }
-                : { 
-                    bg: 'bg-morandi-rose', 
-                    text: 'text-morandi-rose', 
-                    lightBg: 'bg-morandi-roseLight',
-                    pill: 'bg-morandi-rose text-white'
-                  };
+            // 根據 colorTheme 動態生成主題顏色類別
+            const getColorClasses = (colorName) => ({
+                bg: `bg-morandi-${colorName}`, 
+                text: `text-morandi-${colorName}`, 
+                lightBg: `bg-morandi-${colorName}Light`,
+                pill: `bg-morandi-${colorName} text-white`
+            });
+
+            const themeClasses = getColorClasses(currentData.colorTheme);
 
             const toggleSection = (section) => {
                 setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -679,7 +745,7 @@
                     <div className="relative px-6 pt-12 pb-10 bg-nude-800">
                         <h2 className="text-white/80 text-lg tracking-[0.15em] mb-2 font-light">心湛美學診所</h2>
                         <h1 className="text-4xl text-white font-medium tracking-wide flex items-center gap-3">
-                            <Icons.Sparkles className="w-8 h-8"/> 手術護理小幫手
+                            <Icons.Sparkles className="w-8 h-8"/> 術後護理小幫手
                         </h1>
                     </div>
 
@@ -721,7 +787,7 @@
                                         <ul className="list-disc pl-6 space-y-2 text-lg font-light text-nude-800 opacity-90">
                                             <li>一天三次，三餐飯後服用。</li>
                                             <li>若未正常用餐，間隔 4 小時以上。</li>
-                                            <li><strong className="font-medium text-nude-900">止血藥、消炎藥、胃藥務必吃完。</strong></li> {/* <--- 更改點 3: 用藥原則 */}
+                                            <li><strong className="font-medium text-nude-900">止血藥、消炎藥、胃藥務必吃完。</strong></li>
                                         </ul>
                                     </div>
                                     <div className="grid gap-4">
@@ -744,30 +810,40 @@
                         </div>
                     </div>
 
-                    {/* --- 分頁切換區 (針對手術種類) --- */}
-                    <div className="mt-10 px-5">
-                        <div className="flex items-center gap-3 mb-6">
+                    {/* --- 分頁切換區 (針對手術種類) - 增加水平滾動 --- */}
+                    <div className="mt-10 px-0">
+                        <div className="flex items-center gap-3 mb-6 px-5">
                              <div className="h-px bg-nude-300 flex-1"></div>
                              <span className="text-base text-nude-400 font-medium tracking-widest uppercase">選擇您的手術</span>
                              <div className="h-px bg-nude-300 flex-1"></div>
                         </div>
 
-                        <div className="flex bg-white p-2 rounded-3xl shadow-lg mb-8">
-                            <button 
-                                onClick={() => setActiveTab('eyebag')}
-                                className={`flex-1 py-4 rounded-2xl text-xl font-medium transition-all duration-300 ${activeTab === 'eyebag' ? 'bg-morandi-blue text-white shadow-xl' : 'text-nude-400 hover:bg-nude-50'}`}
-                            >
-                                眼袋手術
-                            </button>
-                            <button 
-                                onClick={() => setActiveTab('neck')}
-                                className={`flex-1 py-4 rounded-2xl text-xl font-medium transition-all duration-300 ${activeTab === 'neck' ? 'bg-morandi-rose text-white shadow-xl' : 'text-nude-400 hover:bg-nude-50'}`}
-                            >
-                                天鵝頸手術
-                            </button>
-                        </div>
+                        <div className="flex bg-nude-100 px-5 overflow-x-auto no-scrollbar pb-3 space-x-3">
+                            {surgeryKeys.map(key => {
+                                const data = specificContent[key];
+                                const isSelected = activeTab === key;
+                                const colorClass = getColorClasses(data.colorTheme);
 
-                        {/* --- 手術專屬內容 (傷口與照護) --- */}
+                                return (
+                                    <button 
+                                        key={key}
+                                        onClick={() => setActiveTab(key)}
+                                        // 確保按鈕不會被壓縮 (flex-shrink-0)
+                                        className={`flex-shrink-0 px-5 py-4 rounded-3xl text-lg font-medium transition-all duration-300 shadow-md min-w-[120px] ${
+                                            isSelected 
+                                                ? `${colorClass.bg} text-white shadow-xl` 
+                                                : 'bg-white text-nude-800 hover:bg-nude-200'
+                                        }`}
+                                    >
+                                        {data.title}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* --- 手術專屬內容 (傷口與照護) --- */}
+                    <div className="px-5 mt-4">
                         <div className={`transition-opacity duration-300 ease-in-out`}>
                             <h3 className={`text-3xl font-medium mb-6 flex items-center gap-3 ${themeClasses.text}`}>
                                 <Icons.Sparkles className="w-8 h-8"/> {currentData.title}術後照護
@@ -800,11 +876,11 @@
                                         <span>換藥包：棉花棒、生理食鹽水、藥膏 (Tetra)</span>
                                     </div>
                                     
-                                    {/* 特殊藥水 (眼袋專用) */}
-                                    {activeTab === 'eyebag' && (
-                                        <div className={`mt-4 ${themeClasses.lightBg} p-5 rounded-2xl text-lg text-nude-800 flex gap-3 items-center`}>
-                                            <Icons.Droplets className={`w-6 h-6 ${themeClasses.text} flex-shrink-0`}/>
-                                            <span>{currentData.woundCare.medsNote}</span>
+                                    {/* 特殊藥水/注意事項 */}
+                                    {currentData.woundCare.medsNote && (
+                                        <div className={`mt-4 ${themeClasses.lightBg} p-5 rounded-2xl text-lg text-nude-800 flex gap-3 items-start`}>
+                                            <Icons.Droplets className={`w-6 h-6 ${themeClasses.text} flex-shrink-0 mt-1`}/>
+                                            <span className="leading-relaxed">{currentData.woundCare.medsNote}</span>
                                         </div>
                                     )}
                                 </div>
@@ -848,4 +924,3 @@
     </script>
 </body>
 </html>
-
