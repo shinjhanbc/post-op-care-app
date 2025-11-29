@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>手術護理小幫手 - 心湛美學診所</title>
+    <title>手術護理小幫手 - AI三倍強化版</title>
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -27,22 +27,18 @@
                             900: '#433E3C',
                         },
                         morandi: {
-                            // 既有顏色 (藍/玫瑰)
                             blue: '#7A8F9F',       /* 莫蘭迪灰藍 (眼袋) */
                             blueLight: '#E8EFF5',
                             rose: '#C59D9D',       /* 乾燥玫瑰 (天鵝頸) */
                             roseLight: '#F7EBEB',
-                            
-                            // 新增顏色
                             green: '#94A396',      /* 鼠尾草綠 (雙眼皮) */
                             greenLight: '#F0F5F1',
                             purple: '#A394A3',     /* 柔和紫 (隆鼻) */
                             purpleLight: '#F5F1F5',
                             yellow: '#D9C7A6',     /* 淺米黃 (隆乳) */
                             yellowLight: '#FFFBEF',
-                            orange: '#D48F7A',     /* 赤陶橘 (抽脂) */
+                            orange: '#D48F7A',     /* 赤陶橘 (抽脂/AI影像) */
                             orangeLight: '#F7EFE9',
-
                             gray: '#A8A29E',       /* 暖灰 */
                         }
                     },
@@ -104,7 +100,7 @@
         // 全局 API Key 變量 (必須保留)
         const apiKey = ""; 
 
-        // 輔助函式：Base64 轉 ArrayBuffer
+        // --- 輔助函式 for TTS ---
         const base64ToArrayBuffer = (base64) => {
             const binaryString = atob(base64);
             const len = binaryString.length;
@@ -115,7 +111,6 @@
             return bytes.buffer;
         };
 
-        // 輔助函式：PCM 轉 WAV
         const pcmToWav = (pcmData, sampleRate) => {
             const numChannels = 1;
             const bitsPerSample = 16;
@@ -154,7 +149,9 @@
             return new Blob([buffer], { type: 'audio/wav' });
         };
 
-        // LLM Call for TTS (Text-to-Speech)
+        // --- Gemini API Calls ---
+
+        // 1. LLM Call for TTS (Text-to-Speech)
         const generateSpeech = async (text, speaker = "Kore") => {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
             const payload = {
@@ -211,10 +208,9 @@
             }
         };
 
-        // LLM Call for Q&A
+        // 2. LLM Call for Q&A (Text Generation with Search Grounding)
         const generateText = async (prompt) => {
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            // 系統提示納入所有術後護理的通用原則
             const systemPrompt = `你是一個專業、親切且負責任的醫美診所術後護理指導助理。你的任務是基於提供的術後藥物清單，回答使用者關於口服藥、藥物搭配或生活習慣的常見問題。請以繁體中文回答，語氣必須保持溫和、專業和安心感。請勿提供超出範圍的醫療建議，並在回答中強調「有嚴重不適請立刻聯繫診所或就醫」。
                                   
                                   **術後藥物清單：**
@@ -227,7 +223,7 @@
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
-                tools: [{ "google_search": {} }], // 啟用 Google Search 進行資訊搜索和接地氣
+                tools: [{ "google_search": {} }],
             };
 
             const maxRetries = 3;
@@ -261,8 +257,70 @@
             }
         };
 
+        // 3. LLM Call for Image Understanding (Injury Assessment)
+        const generateImageAnalysis = async (prompt, base64Image, mimeType) => {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const systemPrompt = `你是一個專業、親切且負責任的醫美診所術後護理指導助理。你的任務是基於使用者提供的**傷口/腫脹部位圖片**以及他們的**問題**，提供初步的觀察和建議。
+                                **重要原則:**
+                                1. 永遠強調你的分析是初步的，不能取代醫師的親自診斷。
+                                2. 仔細觀察圖片，並針對「顏色、腫脹程度、是否有滲液、是否發紅、縫線狀態」給出客觀描述。
+                                3. 根據觀察結果，提供安心且專業的建議，例如「輕微腫脹是正常的，請繼續冰敷」、「如果發紅擴大請盡快回診」。
+                                4. 以繁體中文回答，語氣必須保持溫和、專業和安心感。
+                                5. **絕對**不能給出「沒事」或「就是感染了」的最終診斷。`;
+            
+            const contents = [
+                {
+                    role: "user",
+                    parts: [
+                        { text: prompt },
+                        {
+                            inlineData: {
+                                mimeType: mimeType,
+                                data: base64Image
+                            }
+                        }
+                    ]
+                }
+            ];
 
-        // 圖標組件 - 稍微加大預設尺寸
+            const payload = {
+                contents: contents,
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            const maxRetries = 3;
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`API response status: ${response.status}`);
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        return candidate.content.parts[0].text;
+                    }
+                    throw new Error("LLM response missing text.");
+
+                } catch (error) {
+                    console.error(`Image Analysis API attempt ${attempt + 1} failed:`, error);
+                    if (attempt < maxRetries - 1) {
+                        const delay = Math.pow(2, attempt) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        return "很抱歉，AI 影像分析暫時無法回應。請將照片直接傳給診所客服，謝謝！"; 
+                    }
+                }
+            }
+        };
+
+
+        // --- UI 組件：圖標 ---
         const Icons = {
             Clock: ({className}) => <i data-lucide="clock" className={className || "w-6 h-6"}></i>,
             Calendar: ({className}) => <i data-lucide="calendar" className={className || "w-6 h-6"}></i>,
@@ -277,16 +335,16 @@
             Heart: ({className}) => <i data-lucide="heart-handshake" className={className || "w-6 h-6"}></i>,
             Volume2: ({className}) => <i data-lucide="volume-2" className={className || "w-6 h-6"}></i>,
             VolumeX: ({className}) => <i data-lucide="volume-x" className={className || "w-6 h-6"}></i>,
-            MessageCircle: ({className}) => <i data-lucide="message-circle" className={className || "w-6 h-6"}></i>,
-            Zap: ({className}) => <i data-lucide="zap" className={className || "w-6 h-6"}></i>, // 用於抽脂
-            Smile: ({className}) => <i data-lucide="smile" className={className || "w-6 h-6"}></i>, // 用於雙眼皮
-            Feather: ({className}) => <i data-lucide="feather" className={className || "w-6 h-6"}></i>, // 用於隆鼻
-            HandHeart: ({className}) => <i data-lucide="hand-heart" className={className || "w-6 h-6"}></i>, // 用於隆乳
+            MessageCircle: ({className}) => <i data-lucide="message-circle" className={className || "w-6 h-6"}>*/</i>,
+            Zap: ({className}) => <i data-lucide="zap" className={className || "w-6 h-6"}></i>,
+            Smile: ({className}) => <i data-lucide="smile" className={className || "w-6 h-6"}></i>, 
+            Feather: ({className}) => <i data-lucide="feather" className={className || "w-6 h-6"}></i>, 
+            HandHeart: ({className}) => <i data-lucide="hand-heart" className={className || "w-6 h-6"}></i>,
+            Camera: ({className}) => <i data-lucide="camera" className={className || "w-6 h-6"}></i>, // For Image Assessment
         };
 
         // --- 共用資料 ---
 
-        // 1. 口服藥品 (不分術種)
         const commonMedications = [
             { id: 'anti-inflammatory', name: '消炎藥 (抗生素)', desc: '預防傷口感染，務必吃完療程。', type: 'capsule-green-white', schedule: '5天份', frequency: '三餐飯後', important: true },
             { id: 'stomach', name: '胃藥', desc: '保護腸胃，減少藥物刺激。', type: 'tablet-pink', schedule: '5天份', frequency: '三餐飯後', important: true },
@@ -294,7 +352,6 @@
             { id: 'hemostatic', name: '止血消腫藥', desc: '幫助止血與消腫，只需吃前兩天，務必吃完。', type: 'capsule-yellow-red', schedule: '前2天', frequency: '三餐飯後', important: true }
         ];
 
-        // 2. 術前須知 (整合版)
         const commonPreOp = [
             '手術前一週停用保健食品 (銀杏、人蔘、魚油、維他命E、活通血路藥物等)。',
             '手術前一晚請徹底清潔、洗頭洗澡，當日不需帶換洗衣物。',
@@ -305,7 +362,7 @@
             '請勿自行開車/騎車，建議搭乘大眾運輸或親友接送。'
         ];
 
-        // --- 分頁專屬資料 (傷口護理) - 增加四個術式 ---
+        // --- 分頁專屬資料 (傷口護理) ---
         const specificContent = {
             eyebag: {
                 title: '眼袋手術',
@@ -404,7 +461,7 @@
                 iceCare: {
                     instruction: '術後前三天需冰敷。',
                     method: '避開乳房本體，冰敷於胸部外側或腋下傷口周圍。',
-                    position: '穿著束胸帶或彈性內衣，背部墊2-3顆枕頭半坐臥方式休息。'
+                    position: '穿著束胸帶或彈性內衣，背部墊2-3顆枕頭半坐臥方式休息。' // 已修改
                 }
             },
             liposuction: {
@@ -431,9 +488,8 @@
         const surgeryKeys = Object.keys(specificContent);
 
 
-        // UI 組件：藥丸顯示
+        // --- UI 組件：藥丸顯示 ---
         const PillVisual = ({ type }) => {
-            // 放大藥丸圖示
             let className = "w-10 h-5 inline-block mr-4 flex-shrink-0 ";
             if (type === 'capsule-green-white') className += "rounded-full pill-capsule-green-white";
             if (type === 'capsule-yellow-red') className += "rounded-full pill-capsule-yellow-red";
@@ -443,13 +499,11 @@
             return <div className={className}></div>;
         };
 
-        // UI 組件：冰敷計時器
+        // --- UI 組件：冰敷計時器 ---
         const IceTimer = ({ activeTab }) => {
             const [timeLeft, setTimeLeft] = useState(15 * 60); 
             const [isActive, setIsActive] = useState(false);
-            const [mode, setMode] = useState('ice'); // 'ice' or 'rest'
-
-            // 動態獲取顏色
+            const [mode, setMode] = useState('ice');
             const colorName = specificContent[activeTab].colorTheme;
             const btnColor = `bg-morandi-${colorName} text-white`;
             const ringColor = `text-morandi-${colorName}`;
@@ -462,17 +516,12 @@
                     }, 1000);
                 } else if (timeLeft === 0) {
                     setIsActive(false);
-                    
-                    const message = mode === 'ice' 
-                        ? "冰敷結束！請休息 1-2 小時。"
-                        : "休息結束，可以準備下一次冰敷囉！";
-                    
-                    console.log(message); // Logging as a simple message
-
                     if(mode === 'ice') {
+                        // 冰敷結束，進入休息
                         setMode('rest');
                         setTimeLeft(60 * 60); 
                     } else {
+                        // 休息結束，準備下一次冰敷
                         setMode('ice');
                         setTimeLeft(15 * 60);
                     }
@@ -520,7 +569,7 @@
             );
         };
         
-        // UI 組件：AI 藥物問答介面
+        // --- Gemini Feature 1: AI 藥物問答介面 (LLM + Search Grounding) ---
         const MedicationQnA = () => {
             const [query, setQuery] = useState('');
             const [response, setResponse] = useState('');
@@ -548,7 +597,7 @@
                 <div className="p-4 bg-nude-50 rounded-2xl border border-nude-200/50 mt-4">
                     <button 
                         onClick={() => setIsChatOpen(!isChatOpen)}
-                        className="w-full flex items-center justify-center gap-3 text-xl font-medium py-3 rounded-xl bg-nude-200 text-nude-800 hover:bg-nude-300 transition-colors shadow-md active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-3 text-xl font-medium py-3 rounded-xl bg-morandi-blueLight text-morandi-blue hover:bg-morandi-blueLight/80 transition-colors shadow-md active:scale-[0.98]"
                     >
                          <Icons.MessageCircle className="w-5 h-5"/> ✨ AI 藥物安心問答
                     </button>
@@ -588,44 +637,13 @@
             );
         };
 
-
-        // UI 組件：手風琴區塊
-        const CommonAccordionItem = ({ title, icon, children, isOpen, onClick }) => {
-            return (
-                <div className="border-b border-nude-200 last:border-0">
-                    <button 
-                        className="w-full py-6 px-6 flex items-center justify-between bg-white hover:bg-nude-50 transition-all duration-300 text-left"
-                        onClick={onClick}
-                    >
-                        <div className="flex items-center gap-5">
-                            <span className={`p-3 rounded-xl transition-colors duration-300 ${isOpen ? 'bg-nude-200 text-nude-900' : 'bg-nude-100 text-nude-800'}`}>
-                                {icon}
-                            </span>
-                            <span className={`text-xl font-medium tracking-wide transition-colors ${isOpen ? 'text-nude-900' : 'text-nude-800'}`}>
-                                {title}
-                            </span>
-                        </div>
-                        <span className={`transform transition-transform duration-300 ${isOpen ? 'rotate-180 text-nude-800' : 'text-nude-300'}`}>
-                            <Icons.ChevronDown className="w-6 h-6"/>
-                        </span>
-                    </button>
-                    <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                        <div className="p-6 pt-2 text-nude-800 leading-relaxed bg-white">
-                            {children}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // UI 組件：TTS 播放器
+        // --- Gemini Feature 2: TTS 播放器 ---
         const TTSPlayer = ({ text, activeTab }) => {
             const [audioUrl, setAudioUrl] = useState(null);
             const [isSpeaking, setIsSpeaking] = useState(false);
             const [isLoading, setIsLoading] = useState(false);
             const audioRef = useRef(null);
 
-            // 獲取當前主題的顏色名稱
             const colorName = specificContent[activeTab].colorTheme;
             const btnColor = `bg-morandi-${colorName}`;
 
@@ -638,7 +656,6 @@
 
             const handlePlay = async () => {
                 if (isSpeaking) {
-                    // Stop playing
                     audioRef.current.pause();
                     audioRef.current.currentTime = 0;
                     setIsSpeaking(false);
@@ -646,15 +663,12 @@
                 }
 
                 if (audioUrl) {
-                    // Play existing audio
                     audioRef.current.play().catch(e => console.error("Error playing existing audio:", e));
                     setIsSpeaking(true);
                     return;
                 }
 
-                // Generate new audio
                 setIsLoading(true);
-                // 根據術式主題選擇不同音色
                 const voiceMap = {
                     blue: 'Leda', rose: 'Kore', green: 'Aoede', purple: 'Charon', yellow: 'Puck', orange: 'Fenrir'
                 };
@@ -668,12 +682,12 @@
                     audioRef.current.play().catch(e => console.error("Error playing generated audio:", e));
                     setIsSpeaking(true);
                 } else {
+                    // 使用 custom modal 代替 alert
                     console.error("Failed to generate TTS audio.");
                 }
             };
 
             useEffect(() => {
-                // Cleanup old URL when component unmounts or text changes
                 return () => {
                     if (audioUrl) URL.revokeObjectURL(audioUrl);
                 };
@@ -703,24 +717,193 @@
                             </>
                         )}
                     </button>
-                    {/* Audio 元素必須在 DOM 中才能播放 */}
                     <audio ref={audioRef} src={audioUrl || undefined} className="hidden" /> 
+                </div>
+            );
+        };
+
+        // --- Gemini Feature 3: 傷口影像輔助評估 (Multimodal) ---
+        const ImageAssessment = ({ activeTab }) => {
+            const [imageFile, setImageFile] = useState(null);
+            const [imagePreview, setImagePreview] = useState(null);
+            const [userQuery, setUserQuery] = useState('');
+            const [aiResponse, setAiResponse] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [isOpen, setIsOpen] = useState(false);
+
+            const surgeryTitle = specificContent[activeTab].title;
+
+            const handleFileChange = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    setImageFile(file);
+                    if (imagePreview) URL.revokeObjectURL(imagePreview); // Clean up previous
+                    setImagePreview(URL.createObjectURL(file));
+                    setAiResponse('');
+                }
+            };
+
+            const handleAskAI = async () => {
+                if (!imageFile || !userQuery.trim()) return;
+
+                setIsLoading(true);
+                setAiResponse('');
+                
+                try {
+                    // 1. Convert File to Base64
+                    const reader = new FileReader();
+                    reader.readAsDataURL(imageFile);
+                    reader.onloadend = async () => {
+                        const base64String = reader.result.split(',')[1];
+                        const mimeType = imageFile.type;
+                        
+                        // 2. Call API (加入當前手術名稱給 AI 參考)
+                        const prompt = `我的手術是 ${surgeryTitle}。我目前想知道：${userQuery}`;
+                        const result = await generateImageAnalysis(prompt, base64String, mimeType);
+                        
+                        setAiResponse(result);
+                        setIsLoading(false);
+                    };
+                } catch (error) {
+                    console.error("Error during image analysis:", error);
+                    setAiResponse("影像處理或 AI 服務發生錯誤。請聯繫診所。");
+                    setIsLoading(false);
+                }
+            };
+            
+            // Cleanup URL
+            useEffect(() => {
+                return () => {
+                    if (imagePreview) URL.revokeObjectURL(imagePreview);
+                };
+            }, [imagePreview]);
+
+            return (
+                <div className="p-4 bg-white rounded-3xl border border-nude-200/50 shadow-lg mt-8">
+                    <button 
+                        onClick={() => setIsOpen(!isOpen)}
+                        className="w-full flex items-center justify-between gap-3 text-xl font-bold py-3 px-2 rounded-xl text-nude-900 transition-colors shadow-none"
+                    >
+                        <div className='flex items-center gap-3'>
+                            <Icons.Camera className="w-6 h-6 text-morandi-orange"/> 
+                            ✨ 傷口影像輔助評估
+                        </div>
+                        <span className={`transform transition-transform duration-300 ${isOpen ? 'rotate-180 text-nude-800' : 'text-nude-300'}`}>
+                            <Icons.ChevronDown className="w-6 h-6"/>
+                        </span>
+                    </button>
+                    
+                    {isOpen && (
+                        <div className="mt-4 pt-4 border-t border-nude-200/50 ai-response space-y-4">
+                            <p className="text-base text-nude-700 leading-relaxed font-light">
+                                請上傳您的 **{surgeryTitle}** 傷口或腫脹部位照片，AI 會根據圖片提供初步的觀察與專業建議。
+                            </p>
+
+                            {/* 1. File Input */}
+                            <label className="block">
+                                <span className="text-nude-800 font-medium mb-2 block">步驟一：上傳照片 (建議正面清晰照)</span>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    className="block w-full text-sm text-nude-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-full file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-morandi-orangeLight file:text-morandi-orange
+                                        hover:file:bg-morandi-orangeLight/80 cursor-pointer
+                                    "
+                                />
+                            </label>
+
+                            {imagePreview && (
+                                <div className="mt-4 border border-nude-200 rounded-xl overflow-hidden p-2">
+                                    <img src={imagePreview} alt="Wound Preview" className="w-full h-auto rounded-lg object-cover max-h-48"/>
+                                    <p className="text-sm text-nude-500 mt-2 text-center">圖片預覽</p>
+                                </div>
+                            )}
+                            
+                            {/* 2. Text Input & Button */}
+                            <div className="space-y-2 pt-2">
+                                <span className="text-nude-800 font-medium block">步驟二：詢問問題</span>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={userQuery}
+                                        onChange={(e) => setUserQuery(e.target.value)}
+                                        placeholder="例如：我的腫脹程度正常嗎？"
+                                        className="flex-1 p-3 border border-nude-300 rounded-xl text-lg focus:ring-morandi-orange focus:border-morandi-orange outline-none transition-shadow"
+                                        disabled={isLoading || !imageFile}
+                                    />
+                                    <button
+                                        onClick={handleAskAI}
+                                        className={`p-3 rounded-xl text-white shadow-md transition-all active:scale-[0.95] min-w-[100px] ${isLoading ? 'bg-nude-400' : 'bg-morandi-orange hover:bg-morandi-orange/90'}`}
+                                        disabled={isLoading || !imageFile}
+                                    >
+                                        {isLoading ? '分析中...' : '開始分析'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 3. AI Response */}
+                            {aiResponse && (
+                                <div className="mt-4 p-4 bg-morandi-orangeLight rounded-xl shadow-inner text-base border border-morandi-orange/50">
+                                    <div className="flex items-center gap-2 font-bold mb-2 text-morandi-orange">
+                                        <Icons.Sparkles className="w-4 h-4"/> AI 影像分析結果
+                                    </div>
+                                    <p className="whitespace-pre-wrap leading-relaxed text-nude-800 font-light">{aiResponse}</p>
+                                    <p className="mt-3 text-xs text-red-500 font-medium">
+                                        *重要提醒：AI 分析僅供參考，不能取代醫師專業判斷。如有疑慮或嚴重不適請立即聯繫診所。
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+
+        // --- UI 組件：手風琴區塊 ---
+        const CommonAccordionItem = ({ title, icon, children, isOpen, onClick }) => {
+            return (
+                <div className="border-b border-nude-200 last:border-0">
+                    <button 
+                        className="w-full py-6 px-6 flex items-center justify-between bg-white hover:bg-nude-50 transition-all duration-300 text-left"
+                        onClick={onClick}
+                    >
+                        <div className="flex items-center gap-5">
+                            <span className={`p-3 rounded-xl transition-colors duration-300 ${isOpen ? 'bg-nude-200 text-nude-900' : 'bg-nude-100 text-nude-800'}`}>
+                                {icon}
+                            </span>
+                            <span className={`text-xl font-medium tracking-wide transition-colors ${isOpen ? 'text-nude-900' : 'text-nude-800'}`}>
+                                {title}
+                            </span>
+                        </div>
+                        <span className={`transform transition-transform duration-300 ${isOpen ? 'rotate-180 text-nude-800' : 'text-nude-300'}`}>
+                            <Icons.ChevronDown className="w-6 h-6"/>
+                        </span>
+                    </button>
+                    <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                        <div className="p-6 pt-2 text-nude-800 leading-relaxed bg-white">
+                            {children}
+                        </div>
+                    </div>
                 </div>
             );
         };
 
 
         const App = () => {
-            const [activeTab, setActiveTab] = useState('eyebag'); // 預設眼袋
+            const [activeTab, setActiveTab] = useState('eyebag');
             const [openSections, setOpenSections] = useState({
                 preop: false,
                 meds: true,
             });
 
             const currentData = specificContent[activeTab];
-            const woundCareText = currentData.woundCare.steps.join('。'); // 拼接所有步驟為一段文字
+            const woundCareText = currentData.woundCare.steps.join('。');
             
-            // 根據 colorTheme 動態生成主題顏色類別
             const getColorClasses = (colorName) => ({
                 bg: `bg-morandi-${colorName}`, 
                 text: `text-morandi-${colorName}`, 
@@ -741,7 +924,7 @@
             return (
                 <div className="max-w-md mx-auto min-h-screen bg-nude-100 pb-20 relative shadow-2xl overflow-hidden font-sans">
                     
-                    {/* Header - 字體放大 */}
+                    {/* Header */}
                     <div className="relative px-6 pt-12 pb-10 bg-nude-800">
                         <h2 className="text-white/80 text-lg tracking-[0.15em] mb-2 font-light">心湛美學診所</h2>
                         <h1 className="text-4xl text-white font-medium tracking-wide flex items-center gap-3">
@@ -771,7 +954,7 @@
                             </CommonAccordionItem>
                         </div>
 
-                        {/* 2. 口服藥品 */}
+                        {/* 2. 口服藥品 (含 AI 藥物問答) */}
                         <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
                             <CommonAccordionItem 
                                 title="口服藥與藥品" 
@@ -804,13 +987,19 @@
                                             </div>
                                         ))}
                                     </div>
-                                    <MedicationQnA /> {/* 藥物問答介面 */}
+                                    <MedicationQnA />
                                 </div>
                             </CommonAccordionItem>
                         </div>
                     </div>
 
-                    {/* --- 分頁切換區 (針對手術種類) - 增加水平滾動 --- */}
+                    {/* --- Gemini Feature 3: 影像輔助評估 --- */}
+                    <div className="px-5">
+                        <ImageAssessment activeTab={activeTab} /> 
+                    </div>
+
+
+                    {/* --- 分頁切換區 (針對手術種類) --- */}
                     <div className="mt-10 px-0">
                         <div className="flex items-center gap-3 mb-6 px-5">
                              <div className="h-px bg-nude-300 flex-1"></div>
@@ -828,7 +1017,6 @@
                                     <button 
                                         key={key}
                                         onClick={() => setActiveTab(key)}
-                                        // 確保按鈕不會被壓縮 (flex-shrink-0)
                                         className={`flex-shrink-0 px-5 py-4 rounded-3xl text-lg font-medium transition-all duration-300 shadow-md min-w-[120px] ${
                                             isSelected 
                                                 ? `${colorClass.bg} text-white shadow-xl` 
@@ -850,7 +1038,7 @@
                             </h3>
 
                             <div className="space-y-8">
-                                {/* 傷口清潔 */}
+                                {/* 傷口清潔 (含 TTS 語音) */}
                                 <div className="bg-white rounded-3xl p-6 shadow-lg border border-nude-100">
                                     <div className="flex items-center gap-4 mb-6">
                                         <div className={`p-4 rounded-xl ${themeClasses.lightBg} ${themeClasses.text}`}>
@@ -859,8 +1047,8 @@
                                         <h4 className="text-2xl font-bold text-nude-900">傷口清潔與換藥</h4>
                                     </div>
                                     
-                                    <TTSPlayer text={woundCareText} activeTab={activeTab} /> {/* TTS 播放器 */}
-
+                                    <TTSPlayer text={woundCareText} activeTab={activeTab} />
+                                    
                                     <div className="relative pl-8 border-l-2 border-nude-200 space-y-6 my-6">
                                         {currentData.woundCare.steps.map((step, i) => (
                                             <div key={i} className="relative">
@@ -870,13 +1058,11 @@
                                         ))}
                                     </div>
 
-                                    {/* 換藥包提示 */}
                                     <div className="mt-8 bg-nude-50 p-5 rounded-2xl text-lg text-nude-800 font-light flex gap-3 items-center">
                                         <Icons.Heart className="w-6 h-6 text-nude-400 flex-shrink-0"/>
                                         <span>換藥包：棉花棒、生理食鹽水、藥膏 (Tetra)</span>
                                     </div>
                                     
-                                    {/* 特殊藥水/注意事項 */}
                                     {currentData.woundCare.medsNote && (
                                         <div className={`mt-4 ${themeClasses.lightBg} p-5 rounded-2xl text-lg text-nude-800 flex gap-3 items-start`}>
                                             <Icons.Droplets className={`w-6 h-6 ${themeClasses.text} flex-shrink-0 mt-1`}/>
@@ -924,4 +1110,3 @@
     </script>
 </body>
 </html>
-
