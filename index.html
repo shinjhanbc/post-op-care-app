@@ -37,9 +37,13 @@
                             purpleLight: '#F5F1F5',
                             yellow: '#D9C7A6',     /* 淺米黃 (隆乳) */
                             yellowLight: '#FFFBEF',
-                            orange: '#D48F7A',     /* 赤陶橘 (抽脂/補脂/AI) */
+                            orange: '#D48F7A',     /* 赤陶橘 (抽脂/補脂) */
                             orangeLight: '#F7EFE9',
                             gray: '#A8A29E',       /* 暖灰 */
+                        },
+                        line: {
+                            green: '#06C755',      /* LINE 官方綠色 */
+                            hover: '#05b64d',
                         }
                     },
                     fontFamily: {
@@ -79,14 +83,6 @@
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .ai-response {
-            animation: fadeIn 0.3s ease-out forwards;
-        }
     </style>
 </head>
 <body>
@@ -94,104 +90,6 @@
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-
-        // 全局 API Key (由平台注入)
-        const apiKey = ""; 
-
-        // --- 輔助函式 ---
-        const base64ToArrayBuffer = (base64) => {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        };
-
-        const pcmToWav = (pcmData, sampleRate) => {
-            const numChannels = 1;
-            const bitsPerSample = 16;
-            const pcmLength = pcmData.byteLength;
-            const buffer = new ArrayBuffer(44 + pcmLength);
-            const view = new DataView(buffer);
-            let offset = 0;
-            // RIFF chunk
-            view.setUint32(offset, 0x52494646, true); offset += 4; 
-            view.setUint32(offset, 36 + pcmLength, true); offset += 4; 
-            view.setUint32(offset, 0x57415645, true); offset += 4; 
-            // fmt chunk
-            view.setUint32(offset, 0x666d7420, true); offset += 4; 
-            view.setUint32(offset, 16, true); offset += 4; 
-            view.setUint16(offset, 1, true); offset += 2; 
-            view.setUint16(offset, numChannels, true); offset += 2; 
-            view.setUint32(offset, sampleRate, true); offset += 4; 
-            view.setUint32(offset, sampleRate * numChannels * bitsPerSample / 8, true); offset += 4; 
-            view.setUint16(offset, numChannels * bitsPerSample / 8, true); offset += 2; 
-            view.setUint16(offset, bitsPerSample, true); offset += 2; 
-            // data chunk
-            view.setUint32(offset, 0x64617461, true); offset += 4; 
-            view.setUint32(offset, pcmLength, true); offset += 4; 
-            // Write PCM
-            const pcmView = new Int16Array(pcmData);
-            for (let i = 0; i < pcmView.length; i++) {
-                view.setInt16(offset, pcmView[i], true);
-                offset += 2;
-            }
-            return new Blob([buffer], { type: 'audio/wav' });
-        };
-
-        // --- Gemini API ---
-        const generateSpeech = async (text, speaker = "Kore") => {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-            const payload = {
-                contents: [{ parts: [{ text: text }] }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: speaker } } }
-                },
-                model: "gemini-2.5-flash-preview-tts"
-            };
-            try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) throw new Error(`API error`);
-                const result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-                if (audioData && mimeType) {
-                    const sampleRate = mimeType.match(/rate=(\d+)/)?.[1] ? parseInt(mimeType.match(/rate=(\d+)/)[1]) : 24000;
-                    return URL.createObjectURL(pcmToWav(new Int16Array(base64ToArrayBuffer(audioData)), sampleRate));
-                }
-            } catch (e) { console.error(e); return null; }
-        };
-
-        const generateText = async (prompt) => {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const systemPrompt = `你是一個專業、親切的醫美診所術後護理助理。請以繁體中文回答。藥物清單：1.消炎藥(抗生素)吃完療程。2.胃藥(保護腸胃)必吃。3.止痛藥(痛才吃)。4.止血消腫藥(前兩天必吃)。原則：三餐飯後。`;
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                tools: [{ "google_search": {} }],
-            };
-            try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                const result = await response.json();
-                return result.candidates?.[0]?.content?.parts?.[0]?.text || "暫時無法回應。";
-            } catch (e) { return "暫時無法回應。"; }
-        };
-
-        const generateImageAnalysis = async (prompt, base64Image, mimeType) => {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const systemPrompt = `你是一個醫美術後護理助理。請分析使用者上傳的傷口照片。重點：顏色、腫脹、滲液、發紅。請給予安心建議，並強調「僅供參考，嚴重不適請就醫」。繁體中文回答。`;
-            const contents = [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: mimeType, data: base64Image } }] }];
-            const payload = { contents: contents, systemInstruction: { parts: [{ text: systemPrompt }] } };
-            try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                const result = await response.json();
-                return result.candidates?.[0]?.content?.parts?.[0]?.text || "無法分析影像。";
-            } catch (e) { return "無法分析影像。"; }
-        };
 
         // --- Icons ---
         const Icons = {
@@ -203,18 +101,31 @@
             Droplets: ({className}) => <i data-lucide="droplets" className={className || "w-6 h-6"}></i>,
             Shield: ({className}) => <i data-lucide="shield" className={className || "w-6 h-6"}></i>,
             ChevronDown: ({className}) => <i data-lucide="chevron-down" className={className || "w-6 h-6"}></i>,
+            ChevronUp: ({className}) => <i data-lucide="chevron-up" className={className || "w-6 h-6"}></i>,
             Sparkles: ({className}) => <i data-lucide="sparkles" className={className || "w-6 h-6"}></i>,
             Heart: ({className}) => <i data-lucide="heart-handshake" className={className || "w-6 h-6"}></i>,
-            Volume2: ({className}) => <i data-lucide="volume-2" className={className || "w-6 h-6"}></i>,
-            VolumeX: ({className}) => <i data-lucide="volume-x" className={className || "w-6 h-6"}></i>,
             MessageCircle: ({className}) => <i data-lucide="message-circle" className={className || "w-6 h-6"}></i>,
             Zap: ({className}) => <i data-lucide="zap" className={className || "w-6 h-6"}></i>, 
             Smile: ({className}) => <i data-lucide="smile" className={className || "w-6 h-6"}></i>, 
             Feather: ({className}) => <i data-lucide="feather" className={className || "w-6 h-6"}></i>, 
             HandHeart: ({className}) => <i data-lucide="hand-heart" className={className || "w-6 h-6"}></i>, 
-            Camera: ({className}) => <i data-lucide="camera" className={className || "w-6 h-6"}></i>,
             CheckCircle: ({className}) => <i data-lucide="check-circle" className={className || "w-6 h-6"}></i>,
             Scissors: ({className}) => <i data-lucide="scissors" className={className || "w-6 h-6"}></i>,
+            // 新增的小 icon 用於清單
+            CheckSquare: ({className}) => <i data-lucide="check-square" className={className || "w-5 h-5"}></i>,
+            AlertTriangle: ({className}) => <i data-lucide="alert-triangle" className={className || "w-5 h-5"}></i>,
+            Shirt: ({className}) => <i data-lucide="shirt" className={className || "w-5 h-5"}></i>,
+            Car: ({className}) => <i data-lucide="car" className={className || "w-5 h-5"}></i>,
+            Glasses: ({className}) => <i data-lucide="glasses" className={className || "w-5 h-5"}></i>,
+            ShowerHead: ({className}) => <i data-lucide="shower-head" className={className || "w-5 h-5"}></i>,
+            Ban: ({className}) => <i data-lucide="ban" className={className || "w-5 h-5"}></i>,
+
+            // LINE Icon (Custom SVG)
+            Line: ({className}) => (
+                <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21.16 9.36C21.16 4.76 16.48 1 10.58 1C4.68 1 0 4.76 0 9.36C0 12.96 2.37 15.82 5.58 17.07C6.19 17.3 6.36 17.51 6.3 18.06C6.27 18.28 6.13 19.34 6.09 19.66C6.09 19.66 5.92 20.69 6.54 20.89C7.16 21.09 8.79 20.02 10.87 18.57C14.89 18.57 21.16 14.77 21.16 9.36Z" fill="white"/>
+                </svg>
+            )
         };
 
         // --- Data ---
@@ -225,14 +136,15 @@
             { id: 'hemostatic', name: '止血消腫藥', desc: '幫助止血與消腫，只需吃前兩天，務必吃完。', type: 'capsule-yellow-red', schedule: '前2天', frequency: '三餐飯後', important: true }
         ];
 
+        // 更新後的術前須知，包含 icon 定義
         const commonPreOp = [
-            '手術前一週停用保健食品 (銀杏、人蔘、魚油、維他命E、活通血路藥物等)。',
-            '手術前一晚請徹底清潔、洗頭洗澡，當日不需帶換洗衣物。',
-            '手術當日請全素顏、勿擦保養品 (霜、乳、油類不可)。',
-            '請穿著寬鬆好穿脫衣物，勿穿高跟鞋。',
-            '請勿攜帶貴重物品。',
-            '建議不要戴隱形眼鏡 (若近視可戴一般眼鏡)。',
-            '請勿自行開車/騎車，建議搭乘大眾運輸或親友接送。'
+            { text: '手術前一週停用保健食品 (銀杏、人蔘、魚油、維他命E、活通血路藥物等)。', icon: Icons.Ban },
+            { text: '手術前一晚請徹底清潔、洗頭洗澡，當日不需帶換洗衣物。', icon: Icons.ShowerHead },
+            { text: '手術當日請全素顏、勿擦保養品 (霜、乳、油類不可)。', icon: Icons.Sparkles },
+            { text: '請穿著寬鬆好穿脫衣物，勿穿高跟鞋。', icon: Icons.Shirt },
+            { text: '請勿攜帶貴重物品。', icon: Icons.AlertTriangle },
+            { text: '建議不要戴隱形眼鏡 (若近視可戴一般眼鏡)。', icon: Icons.Glasses },
+            { text: '請勿自行開車/騎車，建議搭乘大眾運輸或親友接送。', icon: Icons.Car }
         ];
 
         // --- 分頁專屬資料 (傷口護理) ---
@@ -700,117 +612,10 @@
             );
         };
 
-        const MedicationQnA = () => {
-            const [query, setQuery] = useState('');
-            const [response, setResponse] = useState('');
-            const [isLoading, setIsLoading] = useState(false);
-            const [isChatOpen, setIsChatOpen] = useState(false);
-
-            const handleAskAI = async () => {
-                if (!query.trim()) return;
-                setIsLoading(true); setResponse('');
-                const result = await generateText(query);
-                setIsLoading(false); setResponse(result);
-            };
-
-            return (
-                <div className="p-4 bg-nude-50 rounded-2xl border border-nude-200/50 mt-4">
-                    <button onClick={() => setIsChatOpen(!isChatOpen)} className="w-full flex items-center justify-center gap-3 text-xl font-medium py-3 rounded-xl bg-morandi-blueLight text-morandi-blue hover:bg-morandi-blueLight/80 transition-colors shadow-md active:scale-[0.98]">
-                         <Icons.MessageCircle className="w-5 h-5"/> ✨ AI 藥物安心問答
-                    </button>
-                    {isChatOpen && (
-                        <div className="mt-4 pt-4 border-t border-nude-200/50 ai-response">
-                            <div className="flex gap-2 mb-3">
-                                <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleAskAI()} placeholder="輸入您的疑問..." className="flex-1 p-3 border border-nude-300 rounded-xl text-lg outline-none" disabled={isLoading}/>
-                                <button onClick={handleAskAI} className={`p-3 rounded-xl text-white shadow-md active:scale-[0.95] min-w-[100px] ${isLoading ? 'bg-nude-400' : 'bg-morandi-blue hover:bg-morandi-blue/90'}`} disabled={isLoading}>{isLoading ? '...' : '詢問'}</button>
-                            </div>
-                            {response && <div className="mt-4 p-4 bg-white rounded-xl shadow-inner text-base border border-morandi-blueLight/50"><div className="flex items-center gap-2 font-bold mb-2 text-morandi-blue"><Icons.Sparkles className="w-4 h-4"/> AI 藥護建議</div><p className="whitespace-pre-wrap leading-relaxed text-nude-800 font-light">{response}</p></div>}
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        const TTSPlayer = ({ text, activeTab }) => {
-            const [audioUrl, setAudioUrl] = useState(null);
-            const [isSpeaking, setIsSpeaking] = useState(false);
-            const [isLoading, setIsLoading] = useState(false);
-            const audioRef = useRef(null);
-            const colorName = specificContent[activeTab].colorTheme;
-            const btnColor = `bg-morandi-${colorName}`;
-
-            useEffect(() => { if (audioRef.current) { audioRef.current.onended = () => setIsSpeaking(false); audioRef.current.onerror = () => setIsSpeaking(false); } }, [audioUrl]);
-            
-            const handlePlay = async () => {
-                if (isSpeaking) { audioRef.current.pause(); audioRef.current.currentTime = 0; setIsSpeaking(false); return; }
-                if (audioUrl) { audioRef.current.play().catch(e => console.error(e)); setIsSpeaking(true); return; }
-                setIsLoading(true);
-                const voiceMap = { blue: 'Leda', rose: 'Kore', green: 'Aoede', purple: 'Charon', yellow: 'Puck', orange: 'Fenrir' };
-                const url = await generateSpeech(`請以專業、溫和的語氣朗讀：${text}`, voiceMap[colorName] || 'Kore');
-                setIsLoading(false);
-                if (url) { setAudioUrl(url); setIsSpeaking(true); setTimeout(() => audioRef.current?.play(), 100); }
-            };
-            useEffect(() => () => { if (audioUrl) URL.revokeObjectURL(audioUrl); }, [text]);
-
-            return (
-                <div className={`mt-6 bg-morandi-${colorName}Light p-4 rounded-xl border border-nude-200`}>
-                    <button onClick={handlePlay} className={`w-full flex items-center justify-center gap-3 text-xl font-medium py-3 rounded-xl transition-colors shadow-md active:scale-[0.98] ${isLoading ? 'bg-nude-400 text-nude-900' : `${btnColor} text-white hover:opacity-90`}`} disabled={isLoading}>
-                        {isLoading ? <><Icons.Volume2 className="w-5 h-5 animate-pulse"/> 生成中...</> : isSpeaking ? <><Icons.VolumeX className="w-5 h-5"/> 停止播放</> : <><Icons.Volume2 className="w-5 h-5"/> ✨ 聽取照護重點</>}
-                    </button>
-                    <audio ref={audioRef} src={audioUrl || undefined} className="hidden" /> 
-                </div>
-            );
-        };
-
-        const ImageAssessment = ({ activeTab }) => {
-            const [imageFile, setImageFile] = useState(null);
-            const [imagePreview, setImagePreview] = useState(null);
-            const [userQuery, setUserQuery] = useState('');
-            const [aiResponse, setAiResponse] = useState('');
-            const [isLoading, setIsLoading] = useState(false);
-            const [isOpen, setIsOpen] = useState(false);
-            const surgeryTitle = specificContent[activeTab].title;
-
-            const handleFileChange = (e) => {
-                const file = e.target.files[0];
-                if (file) { setImageFile(file); if (imagePreview) URL.revokeObjectURL(imagePreview); setImagePreview(URL.createObjectURL(file)); setAiResponse(''); }
-            };
-            const handleAskAI = async () => {
-                if (!imageFile || !userQuery.trim()) return;
-                setIsLoading(true); setAiResponse('');
-                const reader = new FileReader();
-                reader.readAsDataURL(imageFile);
-                reader.onloadend = async () => {
-                    const base64String = reader.result.split(',')[1];
-                    const result = await generateImageAnalysis(`手術：${surgeryTitle}。問題：${userQuery}`, base64String, imageFile.type);
-                    setAiResponse(result); setIsLoading(false);
-                };
-            };
-            useEffect(() => () => { if (imagePreview) URL.revokeObjectURL(imagePreview); }, [imagePreview]);
-
-            return (
-                <div className="p-4 bg-white rounded-3xl border border-nude-200/50 shadow-lg mt-8">
-                    <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between gap-3 text-xl font-bold py-3 px-2 rounded-xl text-nude-900 transition-colors shadow-none">
-                        <div className='flex items-center gap-3'><Icons.Camera className="w-6 h-6 text-morandi-orange"/> ✨ 傷口影像輔助評估</div>
-                        <span className={`transform transition-transform duration-300 ${isOpen ? 'rotate-180 text-nude-800' : 'text-nude-300'}`}><Icons.ChevronDown className="w-6 h-6"/></span>
-                    </button>
-                    {isOpen && (
-                        <div className="mt-4 pt-4 border-t border-nude-200/50 ai-response space-y-4">
-                            <label className="block"><span className="text-nude-800 font-medium mb-2 block">步驟一：上傳照片</span><input type="file" accept="image/*" onChange={handleFileChange} className="block w-full text-sm text-nude-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-morandi-orangeLight file:text-morandi-orange hover:file:bg-morandi-orangeLight/80 cursor-pointer"/></label>
-                            {imagePreview && <div className="mt-4 border border-nude-200 rounded-xl overflow-hidden p-2"><img src={imagePreview} alt="Preview" className="w-full h-auto rounded-lg object-cover max-h-48"/></div>}
-                            <div className="space-y-2 pt-2"><span className="text-nude-800 font-medium block">步驟二：詢問問題</span><div className="flex gap-2"><input type="text" value={userQuery} onChange={(e) => setUserQuery(e.target.value)} placeholder="例如：腫脹正常嗎？" className="flex-1 p-3 border border-nude-300 rounded-xl text-lg outline-none" disabled={isLoading || !imageFile}/><button onClick={handleAskAI} className={`p-3 rounded-xl text-white shadow-md active:scale-[0.95] min-w-[100px] ${isLoading ? 'bg-nude-400' : 'bg-morandi-orange hover:bg-morandi-orange/90'}`} disabled={isLoading || !imageFile}>{isLoading ? '...' : '分析'}</button></div></div>
-                            {aiResponse && <div className="mt-4 p-4 bg-morandi-orangeLight rounded-xl shadow-inner text-base border border-morandi-orange/50"><div className="flex items-center gap-2 font-bold mb-2 text-morandi-orange"><Icons.Sparkles className="w-4 h-4"/> AI 分析結果</div><p className="whitespace-pre-wrap leading-relaxed text-nude-800 font-light">{aiResponse}</p></div>}
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
         const FollowUpSchedule = ({ data, activeTab }) => {
             const colorName = specificContent[activeTab].colorTheme;
             const classes = getColorClasses(colorName);
             
-            // 轉換資料結構，以適應有些項目有 instructions 清單，有些只有 time 字串的情況
             const scheduleItems = [
                 { title: '拆線/拆釘書針', data: data.sutureRemoval, icon: Icons.Scissors, color: 'text-red-500' },
                 { title: '術後 1 個月回診', data: data.oneMonth, icon: Icons.CheckCircle, color: classes.text },
@@ -834,9 +639,8 @@
                                 <div className="flex-1">
                                     <p className="text-lg font-bold text-nude-900 mb-1">{item.title}</p>
                                     <p className="text-xl font-medium text-nude-800 mb-2">
-                                        {item.data.time || item.data} {/* 兼容字串或物件格式 */}
+                                        {item.data.time || item.data} 
                                     </p>
-                                    {/* 如果有詳細說明，顯示列表 */}
                                     {item.data.instructions && item.data.instructions.length > 0 && (
                                         <ul className="list-none space-y-2 mt-3 pt-3 border-t border-nude-200">
                                             {item.data.instructions.map((inst, idx) => (
@@ -869,7 +673,6 @@
             const [activeTab, setActiveTab] = useState('eyebag');
             const [openSections, setOpenSections] = useState({ preop: false, meds: true });
             const currentData = specificContent[activeTab];
-            const woundCareText = currentData.woundCare.steps.join('。');
             const themeClasses = getColorClasses(currentData.colorTheme);
             const toggleSection = (section) => setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
 
@@ -884,7 +687,16 @@
                     <div className="px-5 -mt-6 space-y-5 relative z-10">
                         <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
                             <CommonAccordionItem title="術前小提醒" icon={<Icons.Calendar />} isOpen={openSections.preop} onClick={() => toggleSection('preop')}>
-                                <ul className="space-y-4 mt-2">{commonPreOp.map((item, idx) => (<li key={idx} className="flex items-start gap-4 text-lg text-nude-800 font-light"><span className="mt-2 min-w-[8px] h-[8px] rounded-full bg-nude-400"></span><span className="leading-relaxed">{item}</span></li>))}</ul>
+                                <ul className="space-y-4 mt-2">
+                                    {commonPreOp.map((item, idx) => (
+                                        <li key={idx} className="flex items-start gap-4 text-lg text-nude-800 font-light">
+                                            <div className="mt-1 flex-shrink-0 text-nude-400">
+                                                {item.icon({className: "w-5 h-5"})}
+                                            </div>
+                                            <span className="leading-relaxed">{item.text}</span>
+                                        </li>
+                                    ))}
+                                </ul>
                             </CommonAccordionItem>
                         </div>
                         <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
@@ -892,14 +704,11 @@
                                 <div className="space-y-5">
                                     <div className="bg-nude-50 p-5 rounded-2xl border border-nude-200/50 text-nude-800"><div className="font-medium flex items-center gap-2 mb-3 text-morandi-green"><Icons.AlertCircle className="w-6 h-6" /> <span className="text-nude-900 text-xl">用藥原則</span></div><ul className="list-disc pl-6 space-y-2 text-lg font-light text-nude-800 opacity-90"><li>一天三次，三餐飯後服用。</li><li>若未正常用餐，間隔 4 小時以上。</li><li><strong className="font-medium text-nude-900">止血藥、消炎藥、胃藥務必吃完。</strong></li></ul></div>
                                     <div className="grid gap-4">{commonMedications.map(med => (<div key={med.id} className="flex items-center bg-white p-4 rounded-2xl border border-nude-200 shadow-sm"><PillVisual type={med.type} /><div className="flex-1 min-w-0"><div className="flex justify-between items-baseline mb-2"><h4 className="font-bold text-nude-900 text-xl">{med.name}</h4>{med.important && <span className="text-sm bg-morandi-rose text-white px-3 py-1 rounded-full tracking-wider font-medium">必吃</span>}</div><p className="text-base text-nude-800 opacity-80">{med.desc}</p></div></div>))}</div>
-                                    <MedicationQnA />
                                 </div>
                             </CommonAccordionItem>
                         </div>
                     </div>
                     
-                    <div className="px-5"><ImageAssessment activeTab={activeTab} /></div>
-
                     <div className="mt-10 px-0">
                         <div className="flex items-center gap-3 mb-6 px-5"><div className="h-px bg-nude-300 flex-1"></div><span className="text-base text-nude-400 font-medium tracking-widest uppercase">選擇您的手術</span><div className="h-px bg-nude-300 flex-1"></div></div>
                         <div className="flex bg-nude-100 px-5 overflow-x-auto no-scrollbar pb-3 space-x-3">
@@ -919,7 +728,6 @@
                             <div className="space-y-8 mt-8">
                                 <div className="bg-white rounded-3xl p-6 shadow-lg border border-nude-100">
                                     <div className="flex items-center gap-4 mb-6"><div className={`p-4 rounded-xl ${themeClasses.lightBg} ${themeClasses.text}`}><Icons.Shield className="w-7 h-7"/></div><h4 className="text-2xl font-bold text-nude-900">傷口清潔與換藥</h4></div>
-                                    <TTSPlayer text={woundCareText} activeTab={activeTab} />
                                     <div className="relative pl-8 border-l-2 border-nude-200 space-y-6 my-6">{currentData.woundCare.steps.map((step, i) => (<div key={i} className="relative"><div className={`absolute -left-[1.65rem] top-2 w-4 h-4 rounded-full border-2 border-white ring-2 ring-nude-200 ${themeClasses.bg}`}></div><p className="text-xl text-nude-800 font-light leading-9">{step}</p></div>))}</div>
                                     <div className="mt-8 bg-nude-50 p-5 rounded-2xl text-lg text-nude-800 font-light flex gap-3 items-center"><Icons.Heart className="w-6 h-6 text-nude-400 flex-shrink-0"/><span>換藥包：棉花棒、生理食鹽水、藥膏 (Tetra)</span></div>
                                     {currentData.woundCare.medsNote && (<div className={`mt-4 ${themeClasses.lightBg} p-5 rounded-2xl text-lg text-nude-800 flex gap-3 items-start`}><Icons.Droplets className={`w-6 h-6 ${themeClasses.text} flex-shrink-0 mt-1`}/><span className="leading-relaxed">{currentData.woundCare.medsNote}</span></div>)}
@@ -932,6 +740,18 @@
                             </div>
                         </div>
                     </div>
+                    
+                    {/* Footer & LINE Button */}
+                    <div className="px-5 mt-12 mb-8">
+                        <a href="https://lin.ee/BWzO162" target="_blank" rel="noopener noreferrer" className="block w-full">
+                            <button className="w-full flex items-center justify-center gap-3 bg-[#06C755] hover:bg-[#05b64d] text-white py-4 rounded-2xl shadow-lg transition-transform active:scale-[0.98]">
+                                <Icons.Line className="w-8 h-8" />
+                                <span className="text-xl font-bold tracking-wide">立即詢問診所</span>
+                            </button>
+                        </a>
+                        <p className="text-center text-nude-400 text-sm mt-4 font-light">有任何疑問？歡迎透過 LINE 官方帳號與我們聯繫</p>
+                    </div>
+
                     <footer className="text-center text-nude-300 text-sm tracking-widest uppercase py-12 opacity-60">Design for Healing & Comfort</footer>
                 </div>
             );
