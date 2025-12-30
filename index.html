@@ -107,21 +107,19 @@
             ChevronUp: ({className}) => <i data-lucide="chevron-up" className={className || "w-6 h-6"}></i>,
             Sparkles: ({className}) => <i data-lucide="sparkles" className={className || "w-6 h-6"}></i>,
             Heart: ({className}) => <i data-lucide="heart-handshake" className={className || "w-6 h-6"}></i>,
-            MessageCircle: ({className}) => <i data-lucide="message-circle" className={className || "w-6 h-6"}></i>,
             Zap: ({className}) => <i data-lucide="zap" className={className || "w-6 h-6"}></i>, 
             Smile: ({className}) => <i data-lucide="smile" className={className || "w-6 h-6"}></i>, 
             Feather: ({className}) => <i data-lucide="feather" className={className || "w-6 h-6"}></i>, 
             HandHeart: ({className}) => <i data-lucide="hand-heart" className={className || "w-6 h-6"}></i>, 
             CheckCircle: ({className}) => <i data-lucide="check-circle" className={className || "w-6 h-6"}></i>,
             Scissors: ({className}) => <i data-lucide="scissors" className={className || "w-6 h-6"}></i>,
-            // 新增的小 icon 用於清單
-            CheckSquare: ({className}) => <i data-lucide="check-square" className={className || "w-5 h-5"}></i>,
-            AlertTriangle: ({className}) => <i data-lucide="alert-triangle" className={className || "w-5 h-5"}></i>,
-            Shirt: ({className}) => <i data-lucide="shirt" className={className || "w-5 h-5"}></i>,
-            Car: ({className}) => <i data-lucide="car" className={className || "w-5 h-5"}></i>,
-            Glasses: ({className}) => <i data-lucide="glasses" className={className || "w-5 h-5"}></i>,
-            ShowerHead: ({className}) => <i data-lucide="shower-head" className={className || "w-5 h-5"}></i>,
+            // 術前提醒 Icons
             Ban: ({className}) => <i data-lucide="ban" className={className || "w-5 h-5"}></i>,
+            ShowerHead: ({className}) => <i data-lucide="shower-head" className={className || "w-5 h-5"}></i>,
+            Shirt: ({className}) => <i data-lucide="shirt" className={className || "w-5 h-5"}></i>,
+            AlertTriangle: ({className}) => <i data-lucide="alert-triangle" className={className || "w-5 h-5"}></i>,
+            Glasses: ({className}) => <i data-lucide="glasses" className={className || "w-5 h-5"}></i>,
+            Car: ({className}) => <i data-lucide="car" className={className || "w-5 h-5"}></i>,
 
             // LINE Icon (Custom SVG)
             Line: ({className}) => (
@@ -139,7 +137,7 @@
             { id: 'hemostatic', name: '止血消腫藥', desc: '幫助止血與消腫，只需吃前兩天，務必吃完。', type: 'capsule-yellow-red', schedule: '前2天', frequency: '三餐飯後', important: true }
         ];
 
-        // 更新後的術前須知，包含 icon 定義
+        // 術前須知 (含 Icon)
         const commonPreOp = [
             { text: '手術前一週停用保健食品 (銀杏、人蔘、魚油、維他命E、活通血路藥物等)。', icon: Icons.Ban },
             { text: '手術前一晚請徹底清潔、洗頭洗澡，當日不需帶換洗衣物。', icon: Icons.ShowerHead },
@@ -676,6 +674,7 @@
             const [activeTab, setActiveTab] = useState('eyebag');
             const [openSections, setOpenSections] = useState({ preop: false, meds: true });
             const currentData = specificContent[activeTab];
+            const woundCareText = currentData.woundCare.steps.join('。');
             const themeClasses = getColorClasses(currentData.colorTheme);
             const toggleSection = (section) => setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
 
