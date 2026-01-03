@@ -32,7 +32,7 @@
                         morandi: {
                             blue: '#7A8F9F',       /* 莫蘭迪灰藍 (眼袋) */
                             blueLight: '#E8EFF5',
-                            rose: '#C59D9D',       /* 乾燥玫瑰 (天鵝頸/前額) */
+                            rose: '#C59D9D',       /* 乾燥玫瑰 (天鵝頸/前額/顳側) */
                             roseLight: '#F7EBEB',
                             green: '#94A396',      /* 鼠尾草綠 (雙眼皮) */
                             greenLight: '#F0F5F1',
@@ -40,7 +40,7 @@
                             purpleLight: '#F5F1F5',
                             yellow: '#D9C7A6',     /* 淺米黃 (隆乳) */
                             yellowLight: '#FFFBEF',
-                            orange: '#D48F7A',     /* 赤陶橘 (抽脂/補脂) */
+                            orange: '#D48F7A',     /* 赤陶橘 (抽脂/補脂/中下臉) */
                             orangeLight: '#F7EFE9',
                             gray: '#A8A29E',       /* 暖灰 */
                         },
@@ -113,6 +113,9 @@
             HandHeart: ({className}) => <i data-lucide="hand-heart" className={className || "w-6 h-6"}></i>, 
             CheckCircle: ({className}) => <i data-lucide="check-circle" className={className || "w-6 h-6"}></i>,
             Scissors: ({className}) => <i data-lucide="scissors" className={className || "w-6 h-6"}></i>,
+            User: ({className}) => <i data-lucide="user" className={className || "w-6 h-6"}></i>,
+            Star: ({className}) => <i data-lucide="star" className={className || "w-6 h-6"}></i>,
+            
             // 術前提醒 Icons
             Ban: ({className}) => <i data-lucide="ban" className={className || "w-5 h-5"}></i>,
             ShowerHead: ({className}) => <i data-lucide="shower-head" className={className || "w-5 h-5"}></i>,
@@ -147,6 +150,28 @@
             { text: '建議不要戴隱形眼鏡 (若近視可戴一般眼鏡)。', icon: Icons.Glasses },
             { text: '請勿自行開車/騎車，建議搭乘大眾運輸或親友接送。', icon: Icons.Car }
         ];
+
+        // 除疤凝膠資訊
+        const scarGelInfo = {
+            intro: '除疤凝膠使用方法是：先清潔癒合的傷口與雙手，然後取少量（如半顆米粒），單向薄薄塗勻（勿來回塗抹），等待2-5分鐘乾燥後即可穿衣或上妝，每天早晚各一次，持續使用至少3-6個月，注意不可用於破損傷口並避免陽光直射。',
+            steps: [
+                { title: '時機', desc: '傷口完全癒合、無組織液滲出後即可開始使用。' },
+                { title: '清潔', desc: '用清水溫和清潔疤痕部位及周圍皮膚，並徹底擦乾，同時洗淨雙手。' },
+                { title: '取量', desc: '擠出少量（約半顆米粒大小），足以覆蓋約 7-10 公分長、0.5 公分寬的疤痕即可，用量過多或不及都不好。' },
+                { title: '塗抹', desc: '用指尖將凝膠「單向」、「薄薄」塗抹，切記不要來回摩擦。' },
+                { title: '乾燥', desc: '等待 2-5 分鐘讓凝膠自然風乾，若未乾表示用量太多，下次可減少。' },
+                { title: '後續', desc: '乾燥後可正常穿衣、上妝或使用其他保養品。' },
+            ],
+            notices: [
+                '用量與頻率：每日早晚各一次，至少持續 3-6 個月以上才有效。',
+                '避免破損：不可用於未癒合的開放性傷口或接觸眼睛、黏膜。',
+                '防曬：避免陽光直射疤痕，外出注意防曬。',
+                '飲食：避免高組織胺食物（如海鮮、芒果），以防刺激疤痕。',
+                '過敏：若皮膚發紅、發癢，應停止使用並諮詢醫師。',
+                '輔助：可搭配定點按壓（讓皮膚反白）或矽膠貼片使用。'
+            ],
+            image: 'https://www.shin-jhan.com/wp-content/uploads/2026/01/DERMATIX-ULTRA.jpg'
+        };
 
         // --- 分頁專屬資料 (傷口護理) ---
         const specificContent = {
@@ -352,6 +377,95 @@
                             '活動：避免用力的拉扯手術部位，循序漸進恢復活動。',
                             '恢復期：完全消腫及組織定型約需三到六個月。',
                             '生活習慣：維持正常生活作息，避免體重劇烈起伏。'
+                        ]
+                    },
+                }
+            },
+            midLowerFaceLift: {
+                title: '中下臉拉皮',
+                icon: Icons.User,
+                colorTheme: 'orange', 
+                woundCare: {
+                    steps: [
+                        '心湛美學中下臉拉皮無須戴加壓頭套與引流管照護。',
+                        '術後會為您張貼加壓膠帶(如附圖)幫助傷口修復，並於術後7天拆線後拆除。',
+                        '傷口保持乾燥，避免碰水。清潔時用無菌棉棒沾食鹽水輕拭，再塗藥膏。',
+                        '換藥頻率：早晚各一次，若滲液較多可增加次數。'
+                    ],
+                    medsNote: '術後無需自行拆除敷料或縫線，以降低感染及血腫風險。'
+                },
+                iceCare: {
+                    instruction: '術後前三天密集冰敷，減緩腫脹與出血。',
+                    method: '冰敷袋隔著毛巾，冰敷臉頰兩側與頸部，避開傷口直接壓迫。',
+                    position: '睡覺時墊高頭部，採半坐臥式，避免低頭。'
+                },
+                followUp: {
+                    sutureRemoval: {
+                        time: '術後 7 天 (拆線/拆除加壓膠帶)',
+                        instructions: [
+                            '生活注意事項：避免劇烈活動、彎腰、提重物，保持頭部抬高以減少腫脹與血腫風險。',
+                            '禁忌症：避免吸菸、飲酒，遠離高溫環境（如桑拿、熱水澡），不可自行拆除敷料或縫線。',
+                            '照顧方式：冷敷減輕腫脹，保持傷口清潔乾燥，遵醫囑服用止痛藥、抗生素、降壓藥以預防血腫與感染，並保持心情平穩降低血壓波動。'
+                        ]
+                    },
+                    oneMonth: {
+                        time: '術後 1 個月',
+                        instructions: [
+                            '活動：可逐步恢復日常活動，但仍避免劇烈運動與過度拉扯臉部。',
+                            '恢復：腫脹與瘀青多於2-4週內消退，部分患者可於10-21天恢復工作與社交活動。',
+                            '禁忌症：避免暴曬、使用刺激性護膚品，持續禁菸，以防止色素沉著及延遲癒合。',
+                            '照顧方式：可開始溫和護膚與保濕，持續監測傷口癒合與疤痕變化，並注意有無感染、血腫或神經症狀。'
+                        ]
+                    },
+                    threeMonth: {
+                        time: '術後 3 個月',
+                        instructions: [
+                            '活動：患者通常可恢復正常運動與社交活動。',
+                            '疤痕照護：需注意保護疤痕避免紫外線曝曬，以降低色素沉著及疤痕增生風險。',
+                            '禁忌症：若有持續腫脹、麻木或異常疤痕，應避免自行處理，及時回診，以利早期診斷與治療併發症。',
+                            '照顧方式：持續護膚、疤痕管理，必要時諮詢醫師進行疤痕治療或神經症狀評估。'
+                        ]
+                    },
+                }
+            },
+            temporalLift: {
+                title: '顳側拉皮',
+                icon: Icons.User,
+                colorTheme: 'rose', // Facial procedure
+                woundCare: {
+                    steps: [
+                        '傷口位於兩側太陽穴髮際線內，通常使用釘書針固定。',
+                        '保持傷口乾燥，洗頭時需小心，可用指腹輕按，勿抓撓傷口。',
+                        '洗完頭後務必用冷風吹乾傷口，並塗抹藥膏。',
+                        '換藥頻率：早晚各一次。'
+                    ],
+                    medsNote: '術後可能會感到太陽穴緊繃或咀嚼無力，屬正常現象。'
+                },
+                iceCare: {
+                    instruction: '術後前三天需冰敷太陽穴周圍。',
+                    method: '冰敷袋隔毛巾，冰敷眼周與太陽穴區域，減輕眼角腫脹。',
+                    position: '頭部抬高休息。'
+                },
+                followUp: {
+                    sutureRemoval: {
+                        time: '術後 10-14 天 (拆釘書針)',
+                        instructions: [
+                            '拆釘：回診拆除頭皮釘書針。',
+                            '飲食：術後兩週內避免用力咀嚼堅硬食物（如魷魚絲、堅果），減少顳肌活動。'
+                        ]
+                    },
+                    oneMonth: {
+                        time: '術後 1 個月',
+                        instructions: [
+                            '恢復：緊繃感逐漸緩解。',
+                            '活動：可恢復正常洗頭力道，但仍需避免刻意拉扯頭皮。'
+                        ]
+                    },
+                    threeMonth: {
+                        time: '術後 3 個月',
+                        instructions: [
+                            '疤痕：髮際線傷口逐漸淡化，可正常梳理頭髮。',
+                            '染燙髮：建議術後三個月後再進行。'
                         ]
                     },
                 }
@@ -672,9 +786,8 @@
 
         const App = () => {
             const [activeTab, setActiveTab] = useState('eyebag');
-            const [openSections, setOpenSections] = useState({ preop: false, meds: true });
+            const [openSections, setOpenSections] = useState({ preop: false, meds: true, scar: true }); // scar default open
             const currentData = specificContent[activeTab];
-            const woundCareText = currentData.woundCare.steps.join('。');
             const themeClasses = getColorClasses(currentData.colorTheme);
             const toggleSection = (section) => setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
 
@@ -706,6 +819,46 @@
                                 <div className="space-y-5">
                                     <div className="bg-nude-50 p-5 rounded-2xl border border-nude-200/50 text-nude-800"><div className="font-medium flex items-center gap-2 mb-3 text-morandi-green"><Icons.AlertCircle className="w-6 h-6" /> <span className="text-nude-900 text-xl">用藥原則</span></div><ul className="list-disc pl-6 space-y-2 text-lg font-light text-nude-800 opacity-90"><li>一天三次，三餐飯後服用。</li><li>若未正常用餐，間隔 4 小時以上。</li><li><strong className="font-medium text-nude-900">止血藥、消炎藥、胃藥務必吃完。</strong></li></ul></div>
                                     <div className="grid gap-4">{commonMedications.map(med => (<div key={med.id} className="flex items-center bg-white p-4 rounded-2xl border border-nude-200 shadow-sm"><PillVisual type={med.type} /><div className="flex-1 min-w-0"><div className="flex justify-between items-baseline mb-2"><h4 className="font-bold text-nude-900 text-xl">{med.name}</h4>{med.important && <span className="text-sm bg-morandi-rose text-white px-3 py-1 rounded-full tracking-wider font-medium">必吃</span>}</div><p className="text-base text-nude-800 opacity-80">{med.desc}</p></div></div>))}</div>
+                                </div>
+                            </CommonAccordionItem>
+                        </div>
+                        
+                        {/* 新增：除疤凝膠使用指南 */}
+                        <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
+                            <CommonAccordionItem title="除疤凝膠使用指南" icon={<Icons.Star />} isOpen={openSections.scar} onClick={() => toggleSection('scar')}>
+                                <div className="space-y-5">
+                                    <div className="rounded-xl overflow-hidden shadow-sm border border-nude-200">
+                                        <img src={scarGelInfo.image} alt="Dermatix Ultra" className="w-full h-auto object-cover" onError={(e) => {e.target.onerror = null; e.target.src='https://placehold.co/600x400?text=Dermatix+Image';}} />
+                                    </div>
+                                    <div className="text-nude-800 font-light leading-relaxed">
+                                        <p className="mb-4 text-base">{scarGelInfo.intro}</p>
+                                    </div>
+                                    <div className="space-y-4 text-nude-800 text-lg font-light">
+                                        
+                                        <div className="bg-nude-50 p-4 rounded-xl border border-nude-200">
+                                            <h4 className="font-bold text-nude-900 mb-3 flex items-center gap-2"><Icons.CheckCircle className="w-5 h-5 text-morandi-green"/> 步驟詳解</h4>
+                                            <div className="space-y-3">
+                                                {scarGelInfo.steps.map((step, idx) => (
+                                                    <div key={idx} className="flex gap-3">
+                                                        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-nude-300 text-white text-sm font-bold mt-0.5">{idx + 1}</div>
+                                                        <div>
+                                                            <span className="font-bold text-nude-900">{step.title}：</span>
+                                                            <span>{step.desc}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-morandi-orangeLight p-4 rounded-xl border border-morandi-orange/30 text-nude-900">
+                                            <h4 className="font-bold text-morandi-orange mb-2 flex items-center gap-2"><Icons.AlertTriangle className="w-5 h-5"/> 注意事項</h4>
+                                            <ul className="list-disc pl-5 space-y-1 text-base">
+                                                {scarGelInfo.notices.map((notice, idx) => (
+                                                    <li key={idx}>{notice}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
                             </CommonAccordionItem>
                         </div>
