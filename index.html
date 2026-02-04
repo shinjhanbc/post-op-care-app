@@ -115,6 +115,7 @@
             Scissors: ({className}) => <i data-lucide="scissors" className={className || "w-6 h-6"}></i>,
             User: ({className}) => <i data-lucide="user" className={className || "w-6 h-6"}></i>,
             Star: ({className}) => <i data-lucide="star" className={className || "w-6 h-6"}></i>,
+            Layers: ({className}) => <i data-lucide="layers" className={className || "w-6 h-6"}></i>, // For Steri-Strips
             
             // 術前提醒 Icons
             Ban: ({className}) => <i data-lucide="ban" className={className || "w-5 h-5"}></i>,
@@ -150,6 +151,24 @@
             { text: '建議不要戴隱形眼鏡 (若近視可戴一般眼鏡)。', icon: Icons.Glasses },
             { text: '請勿自行開車/騎車，建議搭乘大眾運輸或親友接送。', icon: Icons.Car }
         ];
+
+        // 美容膠帶資訊 (New)
+        const steriStripInfo = {
+            intro: '美容膠帶（免縫膠帶）用於拆線後的傷口護理，透過給予傷口適當的壓力與支撐，減少皮膚張力，有效預防疤痕變寬或增生。請持續使用約 3-6 個月。',
+            steps: [
+                { title: '清潔', desc: '先用生理食鹽水清潔傷口及周圍皮膚，務必等待完全乾燥或用乾棉棒擦乾，以免膠帶無法黏貼。' },
+                { title: '黏貼方向', desc: '將美容膠帶與傷口呈「垂直」方向黏貼。先固定傷口一側，稍微拉緊膠帶跨過傷口黏貼至另一側，確保傷口邊緣密合。' },
+                { title: '排列', desc: '多條膠帶平行排列，膠帶之間不需留空隙（或重疊少許），完全覆蓋傷口。' },
+                { title: '更換頻率', desc: '不需天天換藥。約 5-7 天更換一次，或等膠帶邊緣自然翹起、髒污時再更換。' }
+            ],
+            notices: [
+                '防水：貼著膠帶可正常淋浴，洗後用乾毛巾輕壓吸乾水份即可，保持乾燥。',
+                '移除：更換時請溫柔撕除，避免用力拉扯傷害新生皮膚。',
+                '修剪：若僅邊緣翹起，可先用剪刀修剪翹起部分，不需整條撕下。',
+                '過敏：若貼膠帶處皮膚出現紅、腫、癢或是起水泡，請暫停使用並回診檢視。'
+            ],
+            image: 'https://www.shin-jhan.com/wp-content/uploads/2026/02/Steri-Strips-use-way-scaled.png'
+        };
 
         // 除疤凝膠資訊
         const scarGelInfo = {
@@ -786,7 +805,7 @@
 
         const App = () => {
             const [activeTab, setActiveTab] = useState('eyebag');
-            const [openSections, setOpenSections] = useState({ preop: false, meds: true, scar: true }); // scar default open
+            const [openSections, setOpenSections] = useState({ preop: false, meds: true, tape: true, scar: true }); // Tape default open
             const currentData = specificContent[activeTab];
             const themeClasses = getColorClasses(currentData.colorTheme);
             const toggleSection = (section) => setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -823,7 +842,47 @@
                             </CommonAccordionItem>
                         </div>
                         
-                        {/* 新增：除疤凝膠使用指南 */}
+                        {/* 新增：美容膠帶使用指南 (在除疤凝膠前) */}
+                        <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
+                            <CommonAccordionItem title="美容膠帶使用指南" icon={<Icons.Layers />} isOpen={openSections.tape} onClick={() => toggleSection('tape')}>
+                                <div className="space-y-5">
+                                    <div className="rounded-xl overflow-hidden shadow-sm border border-nude-200">
+                                        <img src={steriStripInfo.image} alt="Steri-Strips Usage" className="w-full h-auto object-cover" onError={(e) => {e.target.onerror = null; e.target.src='https://placehold.co/600x400?text=Steri-Strip+Image';}} />
+                                    </div>
+                                    <div className="text-nude-800 font-light leading-relaxed">
+                                        <p className="mb-4 text-base">{steriStripInfo.intro}</p>
+                                    </div>
+                                    <div className="space-y-4 text-nude-800 text-lg font-light">
+                                        
+                                        <div className="bg-nude-50 p-4 rounded-xl border border-nude-200">
+                                            <h4 className="font-bold text-nude-900 mb-3 flex items-center gap-2"><Icons.CheckCircle className="w-5 h-5 text-morandi-green"/> 黏貼重點</h4>
+                                            <div className="space-y-3">
+                                                {steriStripInfo.steps.map((step, idx) => (
+                                                    <div key={idx} className="flex gap-3">
+                                                        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-nude-300 text-white text-sm font-bold mt-0.5">{idx + 1}</div>
+                                                        <div>
+                                                            <span className="font-bold text-nude-900">{step.title}：</span>
+                                                            <span>{step.desc}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-morandi-orangeLight p-4 rounded-xl border border-morandi-orange/30 text-nude-900">
+                                            <h4 className="font-bold text-morandi-orange mb-2 flex items-center gap-2"><Icons.AlertTriangle className="w-5 h-5"/> 注意事項</h4>
+                                            <ul className="list-disc pl-5 space-y-1 text-base">
+                                                {steriStripInfo.notices.map((notice, idx) => (
+                                                    <li key={idx}>{notice}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CommonAccordionItem>
+                        </div>
+
+                        {/* 除疤凝膠使用指南 */}
                         <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
                             <CommonAccordionItem title="除疤凝膠使用指南" icon={<Icons.Star />} isOpen={openSections.scar} onClick={() => toggleSection('scar')}>
                                 <div className="space-y-5">
