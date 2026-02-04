@@ -152,7 +152,7 @@
             { text: '請勿自行開車/騎車，建議搭乘大眾運輸或親友接送。', icon: Icons.Car }
         ];
 
-        // 美容膠帶資訊 (New)
+        // 美容膠帶資訊
         const steriStripInfo = {
             intro: '美容膠帶（免縫膠帶）用於拆線後的傷口護理，透過給予傷口適當的壓力與支撐，減少皮膚張力，有效預防疤痕變寬或增生。請持續使用約 3-6 個月。',
             steps: [
@@ -841,86 +841,6 @@
                                 </div>
                             </CommonAccordionItem>
                         </div>
-                        
-                        {/* 新增：美容膠帶使用指南 (在除疤凝膠前) */}
-                        <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
-                            <CommonAccordionItem title="美容膠帶使用指南" icon={<Icons.Layers />} isOpen={openSections.tape} onClick={() => toggleSection('tape')}>
-                                <div className="space-y-5">
-                                    <div className="rounded-xl overflow-hidden shadow-sm border border-nude-200">
-                                        <img src={steriStripInfo.image} alt="Steri-Strips Usage" className="w-full h-auto object-cover" onError={(e) => {e.target.onerror = null; e.target.src='https://placehold.co/600x400?text=Steri-Strip+Image';}} />
-                                    </div>
-                                    <div className="text-nude-800 font-light leading-relaxed">
-                                        <p className="mb-4 text-base">{steriStripInfo.intro}</p>
-                                    </div>
-                                    <div className="space-y-4 text-nude-800 text-lg font-light">
-                                        
-                                        <div className="bg-nude-50 p-4 rounded-xl border border-nude-200">
-                                            <h4 className="font-bold text-nude-900 mb-3 flex items-center gap-2"><Icons.CheckCircle className="w-5 h-5 text-morandi-green"/> 黏貼重點</h4>
-                                            <div className="space-y-3">
-                                                {steriStripInfo.steps.map((step, idx) => (
-                                                    <div key={idx} className="flex gap-3">
-                                                        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-nude-300 text-white text-sm font-bold mt-0.5">{idx + 1}</div>
-                                                        <div>
-                                                            <span className="font-bold text-nude-900">{step.title}：</span>
-                                                            <span>{step.desc}</span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-morandi-orangeLight p-4 rounded-xl border border-morandi-orange/30 text-nude-900">
-                                            <h4 className="font-bold text-morandi-orange mb-2 flex items-center gap-2"><Icons.AlertTriangle className="w-5 h-5"/> 注意事項</h4>
-                                            <ul className="list-disc pl-5 space-y-1 text-base">
-                                                {steriStripInfo.notices.map((notice, idx) => (
-                                                    <li key={idx}>{notice}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CommonAccordionItem>
-                        </div>
-
-                        {/* 除疤凝膠使用指南 */}
-                        <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
-                            <CommonAccordionItem title="除疤凝膠使用指南" icon={<Icons.Star />} isOpen={openSections.scar} onClick={() => toggleSection('scar')}>
-                                <div className="space-y-5">
-                                    <div className="rounded-xl overflow-hidden shadow-sm border border-nude-200">
-                                        <img src={scarGelInfo.image} alt="Dermatix Ultra" className="w-full h-auto object-cover" onError={(e) => {e.target.onerror = null; e.target.src='https://placehold.co/600x400?text=Dermatix+Image';}} />
-                                    </div>
-                                    <div className="text-nude-800 font-light leading-relaxed">
-                                        <p className="mb-4 text-base">{scarGelInfo.intro}</p>
-                                    </div>
-                                    <div className="space-y-4 text-nude-800 text-lg font-light">
-                                        
-                                        <div className="bg-nude-50 p-4 rounded-xl border border-nude-200">
-                                            <h4 className="font-bold text-nude-900 mb-3 flex items-center gap-2"><Icons.CheckCircle className="w-5 h-5 text-morandi-green"/> 步驟詳解</h4>
-                                            <div className="space-y-3">
-                                                {scarGelInfo.steps.map((step, idx) => (
-                                                    <div key={idx} className="flex gap-3">
-                                                        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-nude-300 text-white text-sm font-bold mt-0.5">{idx + 1}</div>
-                                                        <div>
-                                                            <span className="font-bold text-nude-900">{step.title}：</span>
-                                                            <span>{step.desc}</span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-morandi-orangeLight p-4 rounded-xl border border-morandi-orange/30 text-nude-900">
-                                            <h4 className="font-bold text-morandi-orange mb-2 flex items-center gap-2"><Icons.AlertTriangle className="w-5 h-5"/> 注意事項</h4>
-                                            <ul className="list-disc pl-5 space-y-1 text-base">
-                                                {scarGelInfo.notices.map((notice, idx) => (
-                                                    <li key={idx}>{notice}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CommonAccordionItem>
-                        </div>
                     </div>
                     
                     <div className="mt-10 px-0">
@@ -950,6 +870,86 @@
                                     <div className="flex items-center gap-4 mb-6"><div className={`p-4 rounded-xl ${themeClasses.lightBg} ${themeClasses.text}`}><Icons.Thermometer className="w-7 h-7"/></div><h4 className="text-2xl font-bold text-nude-900">術後冰敷</h4></div>
                                     <div className="text-xl text-nude-800 font-light space-y-4 mb-6"><p className="font-bold opacity-95 text-2xl mb-4">{currentData.iceCare.instruction}</p><div className="flex flex-col gap-2 bg-nude-50 p-5 rounded-xl"><span className="flex-shrink-0 text-base font-medium uppercase text-nude-400">方法</span><p className="leading-relaxed">{currentData.iceCare.method}</p></div><div className="flex flex-col gap-2 bg-nude-50 p-5 rounded-xl"><span className="flex-shrink-0 text-base font-medium uppercase text-nude-400">姿勢</span><p className="leading-relaxed">{currentData.iceCare.position}</p></div></div>
                                     <IceTimer activeTab={activeTab}/>
+                                </div>
+
+                                {/* 新增：美容膠帶使用指南 (移至術後冰敷後) */}
+                                <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
+                                    <CommonAccordionItem title="美容膠帶使用指南" icon={<Icons.Layers />} isOpen={openSections.tape} onClick={() => toggleSection('tape')}>
+                                        <div className="space-y-5">
+                                            <div className="rounded-xl overflow-hidden shadow-sm border border-nude-200">
+                                                <img src={steriStripInfo.image} alt="Steri-Strips Usage" className="w-full h-auto object-cover" onError={(e) => {e.target.onerror = null; e.target.src='https://placehold.co/600x400?text=Steri-Strip+Image';}} />
+                                            </div>
+                                            <div className="text-nude-800 font-light leading-relaxed">
+                                                <p className="mb-4 text-base">{steriStripInfo.intro}</p>
+                                            </div>
+                                            <div className="space-y-4 text-nude-800 text-lg font-light">
+                                                
+                                                <div className="bg-nude-50 p-4 rounded-xl border border-nude-200">
+                                                    <h4 className="font-bold text-nude-900 mb-3 flex items-center gap-2"><Icons.CheckCircle className="w-5 h-5 text-morandi-green"/> 黏貼重點</h4>
+                                                    <div className="space-y-3">
+                                                        {steriStripInfo.steps.map((step, idx) => (
+                                                            <div key={idx} className="flex gap-3">
+                                                                <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-nude-300 text-white text-sm font-bold mt-0.5">{idx + 1}</div>
+                                                                <div>
+                                                                    <span className="font-bold text-nude-900">{step.title}：</span>
+                                                                    <span>{step.desc}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-morandi-orangeLight p-4 rounded-xl border border-morandi-orange/30 text-nude-900">
+                                                    <h4 className="font-bold text-morandi-orange mb-2 flex items-center gap-2"><Icons.AlertTriangle className="w-5 h-5"/> 注意事項</h4>
+                                                    <ul className="list-disc pl-5 space-y-1 text-base">
+                                                        {steriStripInfo.notices.map((notice, idx) => (
+                                                            <li key={idx}>{notice}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CommonAccordionItem>
+                                </div>
+
+                                {/* 新增：除疤凝膠使用指南 (移至術後冰敷後，緊接美容膠帶) */}
+                                <div className="bg-white rounded-3xl shadow-lg border border-white overflow-hidden">
+                                    <CommonAccordionItem title="除疤凝膠使用指南" icon={<Icons.Star />} isOpen={openSections.scar} onClick={() => toggleSection('scar')}>
+                                        <div className="space-y-5">
+                                            <div className="rounded-xl overflow-hidden shadow-sm border border-nude-200">
+                                                <img src={scarGelInfo.image} alt="Dermatix Ultra" className="w-full h-auto object-cover" onError={(e) => {e.target.onerror = null; e.target.src='https://placehold.co/600x400?text=Dermatix+Image';}} />
+                                            </div>
+                                            <div className="text-nude-800 font-light leading-relaxed">
+                                                <p className="mb-4 text-base">{scarGelInfo.intro}</p>
+                                            </div>
+                                            <div className="space-y-4 text-nude-800 text-lg font-light">
+                                                
+                                                <div className="bg-nude-50 p-4 rounded-xl border border-nude-200">
+                                                    <h4 className="font-bold text-nude-900 mb-3 flex items-center gap-2"><Icons.CheckCircle className="w-5 h-5 text-morandi-green"/> 步驟詳解</h4>
+                                                    <div className="space-y-3">
+                                                        {scarGelInfo.steps.map((step, idx) => (
+                                                            <div key={idx} className="flex gap-3">
+                                                                <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-nude-300 text-white text-sm font-bold mt-0.5">{idx + 1}</div>
+                                                                <div>
+                                                                    <span className="font-bold text-nude-900">{step.title}：</span>
+                                                                    <span>{step.desc}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-morandi-orangeLight p-4 rounded-xl border border-morandi-orange/30 text-nude-900">
+                                                    <h4 className="font-bold text-morandi-orange mb-2 flex items-center gap-2"><Icons.AlertTriangle className="w-5 h-5"/> 注意事項</h4>
+                                                    <ul className="list-disc pl-5 space-y-1 text-base">
+                                                        {scarGelInfo.notices.map((notice, idx) => (
+                                                            <li key={idx}>{notice}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CommonAccordionItem>
                                 </div>
                             </div>
                         </div>
